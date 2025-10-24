@@ -3,6 +3,9 @@ import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle } from 'l
 import logo from '@/assets/PBC-Logo-Circuit.svg';
 
 const TechnicalRequirementsAssessment = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [showError, setShowError] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
     // Section 1: Current Systems
@@ -36,6 +39,16 @@ const TechnicalRequirementsAssessment = () => {
     rollbackCapability: '',
     monitoringAlerting: ''
   });
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === 'ISO2025Tech') {
+      setIsAuthenticated(true);
+      setShowError(false);
+    } else {
+      setShowError(true);
+    }
+  };
 
   const updateField = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -437,6 +450,70 @@ const TechnicalRequirementsAssessment = () => {
   };
 
   const report = currentStep === sections.length ? generateReport() : null;
+
+  // Login Screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="bg-card rounded-lg shadow-lg p-8">
+            {/* Logo and Header */}
+            <div className="text-center mb-6">
+              <img src={logo} alt="PBC Logo" className="h-20 mx-auto mb-4" />
+              <h1 className="text-2xl font-bold text-foreground mb-2">
+                ISO 20022 Technical Requirements Assessment
+              </h1>
+              <p className="text-muted-foreground font-medium">
+                Client Access Only - Enter Password
+              </p>
+            </div>
+
+            {/* Login Form */}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setShowError(false);
+                  }}
+                  className="w-full px-4 py-3 border border-input bg-background rounded-lg focus:ring-2 focus:ring-ring focus:border-ring text-foreground"
+                  placeholder="Enter password"
+                  autoFocus
+                />
+              </div>
+
+              {showError && (
+                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>Incorrect password. Please try again.</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition"
+              >
+                Access Assessment
+              </button>
+            </form>
+
+            {/* Footer */}
+            <div className="mt-8 pt-6 border-t border-border text-center">
+              <p className="text-sm text-muted-foreground">
+                © 2025 Patrick Bayce-Chalvin
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (currentStep === sections.length && report) {
     const { readiness, strategy, criticalGaps, recommendations } = report;
