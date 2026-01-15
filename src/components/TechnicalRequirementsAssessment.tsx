@@ -1,12 +1,22 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { generatePDFReport, generateJSONExport } from '@/utils/technicalAssessmentExport';
 import logo from '@/assets/PBC-Logo-Circuit.svg';
 
 const TechnicalRequirementsAssessment = () => {
+  const { toast } = useToast();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [showError, setShowError] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  
+  // Export state with rate limiting
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isGeneratingJSON, setIsGeneratingJSON] = useState(false);
+  const [lastPDFGenerated, setLastPDFGenerated] = useState(0);
+  const [lastJSONGenerated, setLastJSONGenerated] = useState(0);
+  const COOLDOWN_MS = 3000;
   const [formData, setFormData] = useState({
     // Section 1: Current Systems
     institutionName: '',
@@ -47,6 +57,54 @@ const TechnicalRequirementsAssessment = () => {
       setShowError(false);
     } else {
       setShowError(true);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    const now = Date.now();
+    if (isGeneratingPDF) {
+      toast({ title: "Please wait", description: "PDF is being generated..." });
+      return;
+    }
+    if (now - lastPDFGenerated < COOLDOWN_MS) {
+      toast({ title: "Please wait", description: "Wait 3 seconds between downloads" });
+      return;
+    }
+    
+    setIsGeneratingPDF(true);
+    try {
+      const report = generateReport();
+      generatePDFReport(formData, report);
+      setLastPDFGenerated(now);
+      toast({ title: "PDF Generated", description: "Report downloaded successfully" });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to generate PDF", variant: "destructive" });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  const handleExportJSON = () => {
+    const now = Date.now();
+    if (isGeneratingJSON) {
+      toast({ title: "Please wait", description: "JSON is being exported..." });
+      return;
+    }
+    if (now - lastJSONGenerated < COOLDOWN_MS) {
+      toast({ title: "Please wait", description: "Wait 3 seconds between exports" });
+      return;
+    }
+    
+    setIsGeneratingJSON(true);
+    try {
+      const report = generateReport();
+      generateJSONExport(formData, report);
+      setLastJSONGenerated(now);
+      toast({ title: "JSON Exported", description: "Data file downloaded successfully" });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to export JSON", variant: "destructive" });
+    } finally {
+      setIsGeneratingJSON(false);
     }
   };
 
@@ -655,14 +713,33 @@ const TechnicalRequirementsAssessment = () => {
                 <button className="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition">
                   Schedule Consultation
                 </button>
+              </div>
+            </div>
+
+            {/* Export Actions */}
+            <div className="mt-6 p-6 bg-muted/50 rounded-lg border border-border">
+              <h3 className="font-semibold text-foreground mb-4">Export Options</h3>
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button 
-                  onClick={() => window.print()}
-                  className="bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-800 transition flex items-center justify-center gap-2"
+                  onClick={handleDownloadPDF}
+                  disabled={isGeneratingPDF}
+                  className="flex-1 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Download className="w-4 h-4" />
-                  Download Report
+                  {isGeneratingPDF ? "Generating..." : "Download PDF Report"}
+                </button>
+                <button 
+                  onClick={handleExportJSON}
+                  disabled={isGeneratingJSON}
+                  className="flex-1 bg-background text-foreground border-2 border-primary px-6 py-3 rounded-lg font-semibold hover:bg-primary/10 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FileJson className="w-4 h-4" />
+                  {isGeneratingJSON ? "Exporting..." : "Export Data (JSON)"}
                 </button>
               </div>
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                JSON export can be imported into TCO Calculator, Vendor Framework, and Roadmap Generator
+              </p>
             </div>
 
             <div className="mt-6 text-center">
