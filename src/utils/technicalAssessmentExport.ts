@@ -27,6 +27,8 @@ interface FormData {
   monitoringAlerting: string;
 }
 
+type Regions = string[];
+
 interface Gap {
   priority: string;
   gap: string;
@@ -70,7 +72,7 @@ const getFileSafeName = (name: string): string => {
   return (name || 'Assessment').replace(/[^a-zA-Z0-9]/g, '-').substring(0, 30);
 };
 
-export const generatePDFReport = (formData: FormData, report: Report): void => {
+export const generatePDFReport = (formData: FormData, report: Report, regions: Regions = []): void => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -390,6 +392,47 @@ export const generatePDFReport = (formData: FormData, report: Report): void => {
     yPos += 48;
   });
 
+  // === Geographic Footprint Section ===
+  if (regions.length > 0) {
+    doc.addPage();
+    
+    yPos = 25;
+    doc.setFillColor(59, 130, 246);
+    doc.rect(0, 0, pageWidth, 20, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Geographic Footprint', pageWidth / 2, 13, { align: 'center' });
+
+    yPos = 35;
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Operational Regions:', margin, yPos);
+    yPos += 8;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+
+    regions.forEach(region => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.text(`• ${region}`, margin + 5, yPos);
+      yPos += 6;
+    });
+
+    yPos += 5;
+    const platformCount = regions.some(r => r.includes('Global'))
+      ? '59 global systems'
+      : `${15 + (regions.length * 4)} regional systems`;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Platform Analysis Scope: ${platformCount}`, margin, yPos);
+  }
+
   // Add footers to all pages
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
@@ -402,7 +445,7 @@ export const generatePDFReport = (formData: FormData, report: Report): void => {
   doc.save(fileName);
 };
 
-export const generateJSONExport = (formData: FormData, report: Report): void => {
+export const generateJSONExport = (formData: FormData, report: Report, regions: Regions = []): void => {
   const exportData = {
     assessmentDate: new Date().toISOString(),
     
@@ -460,6 +503,15 @@ export const generateJSONExport = (formData: FormData, report: Report): void => 
         phase: rec.phase,
         actions: rec.actions
       }))
+    },
+
+    geographicFootprint: {
+      regions: regions.map(r =>
+        r.toLowerCase().replace(/\s+/g, '-').replace(/[()]/g, '')
+      ),
+      hasChina: regions.some(r => r.includes('China')),
+      isGlobal: regions.some(r => r.includes('Global')),
+      timestamp: new Date().toISOString()
     }
   };
 
