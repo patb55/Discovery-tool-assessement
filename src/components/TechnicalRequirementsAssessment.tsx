@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generatePDFReport, generateJSONExport } from '@/utils/technicalAssessmentExport';
 import logo from '@/assets/PBC-Logo-Circuit.svg';
@@ -50,6 +50,47 @@ const TechnicalRequirementsAssessment = () => {
     monitoringAlerting: ''
   });
 
+  // Section G: Geographic Footprint
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [regionsError, setRegionsError] = useState('');
+
+  const GEOGRAPHIC_REGIONS = [
+    'Europe (EU-27, UK, Switzerland)',
+    'North America (US, Canada, Mexico)',
+    'Asia-Pacific (Japan, Singapore, Hong Kong, Australia, ASEAN)',
+    'China (mainland operations)',
+    'Middle East & North Africa',
+    'Sub-Saharan Africa',
+    'Latin America',
+    'Global (multi-continental operations)'
+  ];
+
+  const handleRegionToggle = (region: string, checked: boolean) => {
+    const globalRegion = 'Global (multi-continental operations)';
+    setRegionsError('');
+
+    if (region === globalRegion) {
+      if (checked) {
+        setSelectedRegions([...GEOGRAPHIC_REGIONS]);
+      } else {
+        setSelectedRegions([]);
+      }
+    } else {
+      let newRegions = checked
+        ? [...selectedRegions, region]
+        : selectedRegions.filter(r => r !== region);
+
+      if (!checked && newRegions.includes(globalRegion)) {
+        newRegions = newRegions.filter(r => r !== globalRegion);
+      }
+
+      setSelectedRegions(newRegions);
+    }
+  };
+
+  const isGlobalSelected = selectedRegions.includes('Global (multi-continental operations)');
+  const isChinaOnlySelected = selectedRegions.length === 1 && selectedRegions[0] === 'China (mainland operations)';
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === 'ISO2025Tech') {
@@ -74,7 +115,7 @@ const TechnicalRequirementsAssessment = () => {
     setIsGeneratingPDF(true);
     try {
       const report = generateReport();
-      generatePDFReport(formData, report);
+      generatePDFReport(formData, report, selectedRegions);
       setLastPDFGenerated(now);
       toast({ title: "PDF Generated", description: "Report downloaded successfully" });
     } catch (error) {
@@ -98,7 +139,7 @@ const TechnicalRequirementsAssessment = () => {
     setIsGeneratingJSON(true);
     try {
       const report = generateReport();
-      generateJSONExport(formData, report);
+      generateJSONExport(formData, report, selectedRegions);
       setLastJSONGenerated(now);
       toast({ title: "JSON Exported", description: "Data file downloaded successfully" });
     } catch (error) {
@@ -493,11 +534,18 @@ const TechnicalRequirementsAssessment = () => {
     }
   ];
 
+  const totalSteps = sections.length + 1; // 4 data-driven + 1 custom (Section G)
+
   const nextStep = () => {
-    if (currentStep < sections.length - 1) {
+    // Validate Section G before going to results
+    if (currentStep === sections.length) {
+      if (selectedRegions.length === 0) {
+        setRegionsError('Please select at least one region');
+        return;
+      }
+      setCurrentStep(totalSteps); // Results page
+    } else if (currentStep < sections.length) {
       setCurrentStep(currentStep + 1);
-    } else {
-      setCurrentStep(sections.length); // Results page
     }
   };
 
@@ -507,7 +555,15 @@ const TechnicalRequirementsAssessment = () => {
     }
   };
 
-  const report = currentStep === sections.length ? generateReport() : null;
+  const report = currentStep === totalSteps ? generateReport() : null;
+
+  const sectionTitles = [
+    'Current Systems',
+    'Technical Capabilities',
+    'Infrastructure Assessment',
+    'Compliance & Timeline',
+    'Geographic Footprint'
+  ];
 
   // Login Screen
   if (!isAuthenticated) {
@@ -573,7 +629,7 @@ const TechnicalRequirementsAssessment = () => {
     );
   }
 
-  if (currentStep === sections.length && report) {
+  if (currentStep === totalSteps && report) {
     const { readiness, strategy, criticalGaps, recommendations } = report;
     
     return (
@@ -760,7 +816,8 @@ const TechnicalRequirementsAssessment = () => {
     );
   }
 
-  const currentSection = sections[currentStep];
+  const isCustomSection = currentStep === sections.length; // Section G
+  const currentSection = isCustomSection ? null : sections[currentStep];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-8">
@@ -783,16 +840,16 @@ const TechnicalRequirementsAssessment = () => {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-foreground">
-                Step {currentStep + 1} of {sections.length}
+                Step {currentStep + 1} of {totalSteps}
               </span>
               <span className="text-sm text-muted-foreground">
-                {Math.round(((currentStep + 1) / sections.length) * 100)}% Complete
+                {Math.round(((currentStep + 1) / totalSteps) * 100)}% Complete
               </span>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div
                 className="bg-primary h-2 rounded-full transition-all duration-300"
-                style={{ width: `${((currentStep + 1) / sections.length) * 100}%` }}
+                style={{ width: `${((currentStep + 1) / totalSteps) * 100}%` }}
               />
             </div>
           </div>
@@ -800,42 +857,147 @@ const TechnicalRequirementsAssessment = () => {
           {/* Section Header */}
           <div className="mb-6">
             <h2 className="text-xl font-bold text-foreground mb-1">
-              {currentSection.title}
+              {sectionTitles[currentStep]}
             </h2>
-            <p className="text-sm text-muted-foreground">{currentSection.description}</p>
+            <p className="text-sm text-muted-foreground">
+              {isCustomSection 
+                ? 'Identify your operational regions for infrastructure recommendations'
+                : currentSection?.description}
+            </p>
           </div>
 
-          {/* Form Fields */}
-          <div className="space-y-4 mb-8">
-            {currentSection.fields.map((field) => (
-              <div key={field.name}>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  {field.label}
-                </label>
-                {field.type === 'select' ? (
-                  <select
-                    value={formData[field.name as keyof typeof formData]}
-                    onChange={(e) => updateField(field.name, e.target.value)}
-                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring transition"
-                  >
-                    {field.options?.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type={field.type}
-                    value={formData[field.name as keyof typeof formData]}
-                    onChange={(e) => updateField(field.name, e.target.value)}
-                    placeholder={field.placeholder}
-                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring transition"
-                  />
-                )}
+          {/* Form Content */}
+          {isCustomSection ? (
+            /* Section G: Geographic Footprint */
+            <div className="space-y-4 mb-8">
+              <label className="block text-sm font-medium text-foreground">
+                In which regions does your institution currently operate or plan to expand within the next 2 years? *
+              </label>
+              <p className="text-sm text-muted-foreground">
+                Select all regions where you have active operations or confirmed expansion plans. 
+                This helps us recommend region-specific payment infrastructure.
+              </p>
+
+              <div className="space-y-2">
+                {GEOGRAPHIC_REGIONS.map((region) => {
+                  const isChecked = selectedRegions.includes(region);
+                  const isDisabledByGlobal = isGlobalSelected && region !== 'Global (multi-continental operations)';
+
+                  return (
+                    <label
+                      key={region}
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition cursor-pointer ${
+                        isChecked
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      } ${isDisabledByGlobal ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={isDisabledByGlobal}
+                        onChange={(e) => handleRegionToggle(region, e.target.checked)}
+                        className="h-4 w-4 rounded border-primary text-primary focus:ring-ring"
+                      />
+                      <span className={`text-sm ${isDisabledByGlobal ? 'text-muted-foreground' : 'text-foreground'}`}>
+                        {region}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+
+              {regionsError && (
+                <div className="flex items-center gap-2 text-destructive text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  {regionsError}
+                </div>
+              )}
+
+              {isChinaOnlySelected && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-yellow-800">
+                      💡 Consider selecting Asia-Pacific for broader corridor context
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {selectedRegions.some(r => r.includes('China')) && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex gap-2">
+                    <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-900">
+                      <strong>CIPS Analysis:</strong> We'll evaluate both direct participation 
+                      (requires Chinese regulatory compliance + EU sanctions considerations since July 2025) 
+                      and indirect correspondent banking pathways.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(selectedRegions.includes('Sub-Saharan Africa') || 
+                selectedRegions.includes('Middle East & North Africa')) && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                  <div className="flex gap-2">
+                    <Info className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-green-900">
+                      <strong>Regional Systems:</strong> PAPSS (Africa) and Buna (MENA) offer 
+                      ISO 20022-native infrastructure with 70%+ cost reduction vs traditional 
+                      correspondent banking.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedRegions.includes('Latin America') && (
+                <div className="p-3 bg-purple-50 border border-purple-200 rounded-md">
+                  <div className="flex gap-2">
+                    <Info className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-purple-900">
+                      <strong>PIX Integration:</strong> Brazil's PIX processes 40%+ of e-commerce 
+                      with &lt;10 second settlement. We'll evaluate regional instant payment systems 
+                      that may outperform SWIFT.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Data-driven sections A-D */
+            <div className="space-y-4 mb-8">
+              {currentSection?.fields.map((field) => (
+                <div key={field.name}>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    {field.label}
+                  </label>
+                  {field.type === 'select' ? (
+                    <select
+                      value={formData[field.name as keyof typeof formData]}
+                      onChange={(e) => updateField(field.name, e.target.value)}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring transition"
+                    >
+                      {field.options?.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={field.type}
+                      value={formData[field.name as keyof typeof formData]}
+                      onChange={(e) => updateField(field.name, e.target.value)}
+                      placeholder={field.placeholder}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-ring transition"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Navigation Buttons */}
           <div className="flex justify-between">
@@ -855,7 +1017,7 @@ const TechnicalRequirementsAssessment = () => {
               onClick={nextStep}
               className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition"
             >
-              {currentStep === sections.length - 1 ? 'Generate Report' : 'Next'}
+              {currentStep === totalSteps - 1 ? 'Generate Report' : 'Next'}
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
