@@ -509,8 +509,8 @@ export const generateJSONExport = (formData: FormData, report: Report, regions: 
       regions: regions.map(r =>
         r.toLowerCase().replace(/\s+/g, '-').replace(/[()]/g, '')
       ),
-      hasChina: regions.some(r => r.includes('China')),
-      isGlobal: regions.some(r => r.includes('Global')),
+      hasChina: regions.some(r => r.includes('China')) || regions.some(r => r.includes('china')),
+      isGlobal: regions.filter(r => !r.includes('Global')).length >= 3,
       timestamp: new Date().toISOString()
     }
   };
