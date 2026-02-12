@@ -61,34 +61,18 @@ const TechnicalRequirementsAssessment = () => {
     'China (mainland operations)',
     'Middle East & North Africa',
     'Sub-Saharan Africa',
-    'Latin America',
-    'Global (multi-continental operations)'
+    'Latin America'
   ];
 
   const handleRegionToggle = (region: string, checked: boolean) => {
-    const globalRegion = 'Global (multi-continental operations)';
     setRegionsError('');
-
-    if (region === globalRegion) {
-      if (checked) {
-        setSelectedRegions([...GEOGRAPHIC_REGIONS]);
-      } else {
-        setSelectedRegions([]);
-      }
-    } else {
-      let newRegions = checked
-        ? [...selectedRegions, region]
-        : selectedRegions.filter(r => r !== region);
-
-      if (!checked && newRegions.includes(globalRegion)) {
-        newRegions = newRegions.filter(r => r !== globalRegion);
-      }
-
-      setSelectedRegions(newRegions);
-    }
+    const newRegions = checked
+      ? [...selectedRegions, region]
+      : selectedRegions.filter(r => r !== region);
+    setSelectedRegions(newRegions);
   };
 
-  const isGlobalSelected = selectedRegions.includes('Global (multi-continental operations)');
+  const isGlobalAutoCalculated = selectedRegions.length >= 3;
   const isChinaOnlySelected = selectedRegions.length === 1 && selectedRegions[0] === 'China (mainland operations)';
 
   const handleLogin = (e: React.FormEvent) => {
@@ -881,7 +865,6 @@ const TechnicalRequirementsAssessment = () => {
               <div className="space-y-2">
                 {GEOGRAPHIC_REGIONS.map((region) => {
                   const isChecked = selectedRegions.includes(region);
-                  const isDisabledByGlobal = isGlobalSelected && region !== 'Global (multi-continental operations)';
 
                   return (
                     <label
@@ -890,21 +873,31 @@ const TechnicalRequirementsAssessment = () => {
                         isChecked
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/50'
-                      } ${isDisabledByGlobal ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      }`}
                     >
                       <input
                         type="checkbox"
                         checked={isChecked}
-                        disabled={isDisabledByGlobal}
                         onChange={(e) => handleRegionToggle(region, e.target.checked)}
                         className="h-4 w-4 rounded border-primary text-primary focus:ring-ring"
                       />
-                      <span className={`text-sm ${isDisabledByGlobal ? 'text-muted-foreground' : 'text-foreground'}`}>
+                      <span className="text-sm text-foreground">
                         {region}
                       </span>
                     </label>
                   );
                 })}
+
+                {isGlobalAutoCalculated && (
+                  <div className="mt-3 p-3 bg-primary/5 border border-primary/20 rounded-md">
+                    <div className="flex items-start gap-2">
+                      <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-primary">
+                        🌍 <strong>Global Operations Detected:</strong> 3+ regions selected — your assessment will include all global platforms.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {regionsError && (
