@@ -27,6 +27,13 @@ interface FormData {
   monitoringAlerting: string;
 }
 
+interface HybridSettlement {
+  infrastructure: string;
+  blockchainExperience: string;
+  interoperability: string;
+  teamExpertise: string;
+}
+
 type Regions = string[];
 
 interface Gap {
@@ -72,7 +79,68 @@ const getFileSafeName = (name: string): string => {
   return (name || 'Assessment').replace(/[^a-zA-Z0-9]/g, '-').substring(0, 30);
 };
 
-export const generatePDFReport = (formData: FormData, report: Report, regions: Regions = []): void => {
+// Hybrid settlement helpers
+const getHybridMultiplierLabel = (multiplier: number): string => {
+  if (multiplier <= 1.0) return 'SWIFT Only';
+  if (multiplier <= 1.1) return 'Pilot Phase';
+  if (multiplier <= 1.3) return 'Pilot Phase';
+  if (multiplier <= 1.5) return 'Production Hybrid';
+  return 'Multi-Network';
+};
+
+const getInfraLabel = (value: string): string => {
+  const map: Record<string, string> = {
+    'swift_only': 'SWIFT only (no DLT exploration)',
+    'swift_plus_pilot': 'SWIFT + exploring DLT pilots',
+    'parallel_pilot': 'Running parallel pilot (SWIFT + DLT non-production)',
+    'production_hybrid': 'Production hybrid settlement operational'
+  };
+  return map[value] || 'Not specified';
+};
+
+const getBlockchainLabel = (value: string): string => {
+  const map: Record<string, string> = {
+    'none': 'No blockchain experience',
+    'rd_phase': 'R&D phase / proof of concept only',
+    'pilot': 'Pilot deployment (non-production)',
+    'production': 'Production DLT for specific corridors'
+  };
+  return map[value] || 'Not specified';
+};
+
+const getInteropLabel = (value: string): string => {
+  const map: Record<string, string> = {
+    'single': 'Single network sufficient (SWIFT only)',
+    '2-3_networks': 'Need 2-3 network connections',
+    'multi_network': 'Multi-network strategy required (4+ networks)',
+    'cross_chain': 'Exploring cross-chain bridges/interop layers'
+  };
+  return map[value] || 'Not specified';
+};
+
+const getTeamLabel = (value: string): string => {
+  const map: Record<string, string> = {
+    'none': 'No in-house blockchain expertise',
+    'basic_external': 'Basic understanding, external consultants needed',
+    '1-2_devs': '1-2 blockchain developers on staff',
+    'dedicated_team': 'Dedicated blockchain team (3+ developers)'
+  };
+  return map[value] || 'Not specified';
+};
+
+const calcHybridMultiplier = (hybrid: HybridSettlement): number => {
+  const infraMap: Record<string, number> = { 'swift_only': 1.0, 'swift_plus_pilot': 1.1, 'parallel_pilot': 1.3, 'production_hybrid': 1.5 };
+  const interopMap: Record<string, number> = { 'single': 1.0, '2-3_networks': 1.3, 'multi_network': 1.5, 'cross_chain': 1.8 };
+  return Math.max(infraMap[hybrid.infrastructure] || 1.0, interopMap[hybrid.interoperability] || 1.0);
+};
+
+const calcHybridScore = (hybrid: HybridSettlement): number => {
+  const bcMap: Record<string, number> = { 'none': 0, 'rd_phase': 2, 'pilot': 5, 'production': 10 };
+  const teamMap: Record<string, number> = { 'none': 0, 'basic_external': 3, '1-2_devs': 6, 'dedicated_team': 10 };
+  return (bcMap[hybrid.blockchainExperience] || 0) + (teamMap[hybrid.teamExpertise] || 0);
+};
+
+export const generatePDFReport = (formData: FormData, report: Report, regions: Regions = [], hybrid?: HybridSettlement): void => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -392,6 +460,107 @@ export const generatePDFReport = (formData: FormData, report: Report, regions: R
     yPos += 48;
   });
 
+  // === Hybrid Settlement & DLT Readiness Section ===
+  if (hybrid && hybrid.infrastructure) {
+    doc.addPage();
+
+    yPos = 25;
+    doc.setFillColor(59, 130, 246);
+    doc.rect(0, 0, pageWidth, 20, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Hybrid Settlement & DLT Readiness Assessment', pageWidth / 2, 13, { align: 'center' });
+
+    const multiplier = calcHybridMultiplier(hybrid);
+    const score = calcHybridScore(hybrid);
+    const riskLevel = multiplier <= 1.1 ? 'LOW' : multiplier <= 1.5 ? 'MEDIUM' : 'HIGH';
+
+    // Score card
+    yPos = 35;
+    doc.setFillColor(240, 248, 255);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 25, 4, 4, 'F');
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`HYBRID SETTLEMENT READINESS SCORE: ${score}/20 points`, margin + 10, yPos + 10);
+    doc.setFontSize(10);
+    doc.text(`Complexity Multiplier: ${multiplier.toFixed(1)}×  |  Risk Level: ${riskLevel}`, margin + 10, yPos + 20);
+
+    // Current capabilities
+    yPos += 35;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Current Capabilities:', margin, yPos);
+    yPos += 8;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text(`• Settlement infrastructure: ${getInfraLabel(hybrid.infrastructure)}`, margin + 5, yPos); yPos += 6;
+    doc.text(`• Blockchain experience: ${getBlockchainLabel(hybrid.blockchainExperience)}`, margin + 5, yPos); yPos += 6;
+    doc.text(`• Interoperability needs: ${getInteropLabel(hybrid.interoperability)}`, margin + 5, yPos); yPos += 6;
+    doc.text(`• Team expertise: ${getTeamLabel(hybrid.teamExpertise)}`, margin + 5, yPos); yPos += 12;
+
+    // Complexity impact on timeline/FTE
+    const baseTimeline = report.strategy.timeline;
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Complexity Impact:', margin, yPos); yPos += 8;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Your hybrid settlement requirements add a ${multiplier.toFixed(1)}× complexity multiplier.`, margin + 5, yPos); yPos += 6;
+    doc.text(`• Original timeline: ${baseTimeline}  ×  ${multiplier.toFixed(1)}  =  adjusted accordingly`, margin + 5, yPos); yPos += 6;
+    doc.text(`• FTE and budget estimates scale proportionally`, margin + 5, yPos); yPos += 12;
+
+    // Architecture considerations based on multiplier band
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Hybrid Architecture Considerations:', margin, yPos); yPos += 8;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+
+    const label = getHybridMultiplierLabel(multiplier);
+    const considerations: Record<string, string[][]> = {
+      'SWIFT Only': [
+        ['✓', 'Lowest complexity path'],
+        ['✓', 'Established vendor ecosystem'],
+        ['⚠', 'Limited cost optimization potential'],
+        ['⚠', 'No exposure to emerging settlement models']
+      ],
+      'Pilot Phase': [
+        ['✓', 'Gradual adoption approach'],
+        ['✓', 'Risk mitigation through parallel systems'],
+        ['⚠', 'Increased operational overhead'],
+        ['⚠', 'Staff training investment required']
+      ],
+      'Production Hybrid': [
+        ['✓', 'Operational experience with DLT'],
+        ['✓', 'Cost optimization opportunities (conservative 20-30% savings over 2-5yr horizon)'],
+        ['⚠', 'Higher complexity management'],
+        ['⚠', 'Regulatory uncertainty in some jurisdictions']
+      ],
+      'Multi-Network': [
+        ['✓', 'Maximum flexibility and optionality'],
+        ['✓', 'Best-in-class corridor optimization'],
+        ['⚠', 'Highest technical complexity'],
+        ['⚠', 'Interoperability layer dependencies']
+      ]
+    };
+
+    (considerations[label] || considerations['SWIFT Only']).forEach(([icon, text]) => {
+      doc.text(`${icon} ${text}`, margin + 5, yPos); yPos += 6;
+    });
+
+    yPos += 8;
+    doc.setFont('helvetica', 'italic');
+    doc.text('Note: Conservative DLT savings estimates (25-35%) used. Excludes implementation costs (€500K-€2M).', margin + 5, yPos); yPos += 5;
+    doc.text('Requires volume thresholds (10K+ transactions/month) and 2-5 year horizon.', margin + 5, yPos);
+  }
+
   // === Geographic Footprint Section ===
   if (regions.length > 0) {
     doc.addPage();
@@ -425,13 +594,62 @@ export const generatePDFReport = (formData: FormData, report: Report, regions: R
     });
 
     yPos += 5;
-    const platformCount = regions.some(r => r.includes('Global'))
+    const isGlobal = regions.length >= 3;
+    const platformCount = isGlobal
       ? '59 global systems'
       : `${15 + (regions.length * 4)} regional systems`;
     
     doc.setFont('helvetica', 'bold');
     doc.text(`Platform Analysis Scope: ${platformCount}`, margin, yPos);
   }
+
+  // === Glossary Section ===
+  doc.addPage();
+  yPos = 25;
+  doc.setFillColor(59, 130, 246);
+  doc.rect(0, 0, pageWidth, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Glossary of Terms', pageWidth / 2, 13, { align: 'center' });
+
+  yPos = 35;
+  const glossaryTerms = [
+    {
+      term: 'Hybrid Settlement',
+      definition: 'Simultaneous operation of traditional (SWIFT) and blockchain-based settlement systems, with an orchestration layer managing routing decisions.'
+    },
+    {
+      term: 'Interoperability Layer',
+      definition: 'Middleware connecting multiple blockchain networks (e.g., Chainlink CCIP, Cosmos IBC) enabling cross-chain asset transfers.'
+    },
+    {
+      term: 'Cross-Chain Bridge',
+      definition: 'Protocol allowing asset transfers between different blockchain networks while maintaining security guarantees.'
+    },
+    {
+      term: 'DLT (Distributed Ledger Technology)',
+      definition: 'Blockchain-based infrastructure for transaction settlement and recordkeeping without a centralized intermediary.'
+    },
+    {
+      term: 'ISO 20022',
+      definition: 'International standard for electronic data interchange between financial institutions, providing a common messaging framework for payments, securities, and trade.'
+    }
+  ];
+
+  glossaryTerms.forEach(({ term, definition }) => {
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(term, margin, yPos);
+    yPos += 6;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    const lines = doc.splitTextToSize(definition, pageWidth - 2 * margin - 10);
+    doc.text(lines, margin + 5, yPos);
+    yPos += lines.length * 5 + 8;
+  });
 
   // Add footers to all pages
   const totalPages = doc.getNumberOfPages();
@@ -445,7 +663,7 @@ export const generatePDFReport = (formData: FormData, report: Report, regions: R
   doc.save(fileName);
 };
 
-export const generateJSONExport = (formData: FormData, report: Report, regions: Regions = []): void => {
+export const generateJSONExport = (formData: FormData, report: Report, regions: Regions = [], hybrid?: HybridSettlement): void => {
   const exportData = {
     assessmentDate: new Date().toISOString(),
     
@@ -510,9 +728,18 @@ export const generateJSONExport = (formData: FormData, report: Report, regions: 
         r.toLowerCase().replace(/\s+/g, '-').replace(/[()]/g, '')
       ),
       hasChina: regions.some(r => r.includes('China')) || regions.some(r => r.includes('china')),
-      isGlobal: regions.filter(r => !r.includes('Global')).length >= 3,
+      isGlobal: regions.length >= 3,
       timestamp: new Date().toISOString()
-    }
+    },
+
+    hybridSettlement: hybrid ? {
+      infrastructure: hybrid.infrastructure || '',
+      blockchainExperience: hybrid.blockchainExperience || '',
+      interoperability: hybrid.interoperability || '',
+      teamExpertise: hybrid.teamExpertise || '',
+    } : undefined,
+    hybridComplexityMultiplier: hybrid ? calcHybridMultiplier(hybrid) : undefined,
+    hybridReadinessScore: hybrid ? calcHybridScore(hybrid) : undefined
   };
 
   const jsonString = JSON.stringify(exportData, null, 2);

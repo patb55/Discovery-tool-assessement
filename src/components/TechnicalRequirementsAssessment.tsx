@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson, Info } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson, Info, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generatePDFReport, generateJSONExport } from '@/utils/technicalAssessmentExport';
 import logo from '@/assets/PBC-Logo-Circuit.svg';
@@ -50,6 +50,15 @@ const TechnicalRequirementsAssessment = () => {
     monitoringAlerting: ''
   });
 
+  // Section 5: Hybrid Settlement & DLT Infrastructure
+  const [hybridSettlement, setHybridSettlement] = useState({
+    infrastructure: '',
+    blockchainExperience: '',
+    interoperability: '',
+    teamExpertise: ''
+  });
+  const [hybridError, setHybridError] = useState('');
+
   // Section G: Geographic Footprint
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [regionsError, setRegionsError] = useState('');
@@ -99,7 +108,7 @@ const TechnicalRequirementsAssessment = () => {
     setIsGeneratingPDF(true);
     try {
       const report = generateReport();
-      generatePDFReport(formData, report, selectedRegions);
+      generatePDFReport(formData, report, selectedRegions, hybridSettlement);
       setLastPDFGenerated(now);
       toast({ title: "PDF Generated", description: "Report downloaded successfully" });
     } catch (error) {
@@ -123,7 +132,7 @@ const TechnicalRequirementsAssessment = () => {
     setIsGeneratingJSON(true);
     try {
       const report = generateReport();
-      generateJSONExport(formData, report, selectedRegions);
+      generateJSONExport(formData, report, selectedRegions, hybridSettlement);
       setLastJSONGenerated(now);
       toast({ title: "JSON Exported", description: "Data file downloaded successfully" });
     } catch (error) {
@@ -518,11 +527,67 @@ const TechnicalRequirementsAssessment = () => {
     }
   ];
 
-  const totalSteps = sections.length + 1; // 4 data-driven + 1 custom (Section G)
+  const HYBRID_STEP = sections.length;     // Step 4
+  const GEO_STEP = sections.length + 1;    // Step 5
+  const totalSteps = sections.length + 2;  // 4 data-driven + 2 custom
+
+  // Hybrid settlement scoring helpers
+  const getInfrastructureMultiplier = () => {
+    switch (hybridSettlement.infrastructure) {
+      case 'swift_only': return 1.0;
+      case 'swift_plus_pilot': return 1.1;
+      case 'parallel_pilot': return 1.3;
+      case 'production_hybrid': return 1.5;
+      default: return 1.0;
+    }
+  };
+
+  const getBlockchainScore = () => {
+    switch (hybridSettlement.blockchainExperience) {
+      case 'none': return 0;
+      case 'rd_phase': return 2;
+      case 'pilot': return 5;
+      case 'production': return 10;
+      default: return 0;
+    }
+  };
+
+  const getInteropMultiplier = () => {
+    switch (hybridSettlement.interoperability) {
+      case 'single': return 1.0;
+      case '2-3_networks': return 1.3;
+      case 'multi_network': return 1.5;
+      case 'cross_chain': return 1.8;
+      default: return 1.0;
+    }
+  };
+
+  const getTeamScore = () => {
+    switch (hybridSettlement.teamExpertise) {
+      case 'none': return 0;
+      case 'basic_external': return 3;
+      case '1-2_devs': return 6;
+      case 'dedicated_team': return 10;
+      default: return 0;
+    }
+  };
+
+  const hybridComplexityMultiplier = Math.max(getInfrastructureMultiplier(), getInteropMultiplier());
+  const hybridReadinessScore = getBlockchainScore() + getTeamScore(); // out of 20
 
   const nextStep = () => {
-    // Validate Section G before going to results
-    if (currentStep === sections.length) {
+    // Validate Hybrid Settlement section
+    if (currentStep === HYBRID_STEP) {
+      if (!hybridSettlement.infrastructure || !hybridSettlement.blockchainExperience || 
+          !hybridSettlement.interoperability || !hybridSettlement.teamExpertise) {
+        setHybridError('Please answer all questions before proceeding');
+        return;
+      }
+      setHybridError('');
+      setCurrentStep(GEO_STEP);
+    }
+    // Validate Geographic section
+    else if (currentStep === GEO_STEP) {
       if (selectedRegions.length === 0) {
         setRegionsError('Please select at least one region');
         return;
@@ -546,6 +611,7 @@ const TechnicalRequirementsAssessment = () => {
     'Technical Capabilities',
     'Infrastructure Assessment',
     'Compliance & Timeline',
+    'Hybrid Settlement & DLT',
     'Geographic Footprint'
   ];
 
@@ -800,7 +866,9 @@ const TechnicalRequirementsAssessment = () => {
     );
   }
 
-  const isCustomSection = currentStep === sections.length; // Section G
+  const isHybridSection = currentStep === HYBRID_STEP;
+  const isGeoSection = currentStep === GEO_STEP;
+  const isCustomSection = isHybridSection || isGeoSection;
   const currentSection = isCustomSection ? null : sections[currentStep];
 
   return (
@@ -844,14 +912,193 @@ const TechnicalRequirementsAssessment = () => {
               {sectionTitles[currentStep]}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {isCustomSection 
+              {isHybridSection 
+                ? "Evaluate your institution's blockchain infrastructure experience and hybrid settlement capability for SWIFT + DLT convergence models."
+                : isGeoSection
                 ? 'Identify your operational regions for infrastructure recommendations'
                 : currentSection?.description}
             </p>
           </div>
 
           {/* Form Content */}
-          {isCustomSection ? (
+          {isHybridSection ? (
+            /* Section 5: Hybrid Settlement & DLT Infrastructure */
+            <div className="space-y-6 mb-8">
+              <div className="flex items-center gap-2 p-3 bg-muted/50 border border-border rounded-md">
+                <Info className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  Even if not currently using DLT, understanding hybrid models helps future-proof your strategy.
+                </p>
+              </div>
+
+              {/* Q5.1: Settlement Infrastructure */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-foreground">
+                  5.1 What settlement infrastructure are you currently operating? *
+                </label>
+                {[
+                  { value: 'swift_only', label: 'SWIFT only (no DLT exploration)', multiplier: '1.0×' },
+                  { value: 'swift_plus_pilot', label: 'SWIFT + exploring DLT pilots', multiplier: '1.1×' },
+                  { value: 'parallel_pilot', label: 'Running parallel pilot (SWIFT + DLT non-production)', multiplier: '1.3×' },
+                  { value: 'production_hybrid', label: 'Production hybrid settlement operational', multiplier: '1.5×' }
+                ].map(opt => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition cursor-pointer ${
+                      hybridSettlement.infrastructure === opt.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="infrastructure"
+                        value={opt.value}
+                        checked={hybridSettlement.infrastructure === opt.value}
+                        onChange={(e) => { setHybridError(''); setHybridSettlement(prev => ({ ...prev, infrastructure: e.target.value })); }}
+                        className="h-4 w-4 border-primary text-primary focus:ring-ring"
+                      />
+                      <span className="text-sm text-foreground">{opt.label}</span>
+                    </div>
+                    <span className="text-xs font-mono text-muted-foreground">{opt.multiplier}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Q5.2: Blockchain Experience */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-foreground">
+                  5.2 What is your institution's blockchain/DLT operational experience? *
+                </label>
+                {[
+                  { value: 'none', label: 'No blockchain experience', points: '0 pts' },
+                  { value: 'rd_phase', label: 'R&D phase / proof of concept only', points: '2 pts' },
+                  { value: 'pilot', label: 'Pilot deployment (non-production)', points: '5 pts' },
+                  { value: 'production', label: 'Production DLT for specific corridors', points: '10 pts' }
+                ].map(opt => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition cursor-pointer ${
+                      hybridSettlement.blockchainExperience === opt.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="blockchainExperience"
+                        value={opt.value}
+                        checked={hybridSettlement.blockchainExperience === opt.value}
+                        onChange={(e) => { setHybridError(''); setHybridSettlement(prev => ({ ...prev, blockchainExperience: e.target.value })); }}
+                        className="h-4 w-4 border-primary text-primary focus:ring-ring"
+                      />
+                      <span className="text-sm text-foreground">{opt.label}</span>
+                    </div>
+                    <span className="text-xs font-mono text-muted-foreground">{opt.points}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Q5.3: Interoperability */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-foreground">
+                  5.3 How many payment networks/platforms do you need to connect? *
+                </label>
+                {[
+                  { value: 'single', label: 'Single network sufficient (SWIFT only)', multiplier: '1.0×' },
+                  { value: '2-3_networks', label: 'Need 2-3 network connections', multiplier: '1.3×' },
+                  { value: 'multi_network', label: 'Multi-network strategy required (4+ networks)', multiplier: '1.5×' },
+                  { value: 'cross_chain', label: 'Exploring cross-chain bridges/interop layers', multiplier: '1.8×' }
+                ].map(opt => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition cursor-pointer ${
+                      hybridSettlement.interoperability === opt.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="interoperability"
+                        value={opt.value}
+                        checked={hybridSettlement.interoperability === opt.value}
+                        onChange={(e) => { setHybridError(''); setHybridSettlement(prev => ({ ...prev, interoperability: e.target.value })); }}
+                        className="h-4 w-4 border-primary text-primary focus:ring-ring"
+                      />
+                      <span className="text-sm text-foreground">{opt.label}</span>
+                    </div>
+                    <span className="text-xs font-mono text-muted-foreground">{opt.multiplier}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Q5.4: Team Expertise */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-foreground">
+                  5.4 What is your technical team's blockchain/smart contract expertise? *
+                </label>
+                {[
+                  { value: 'none', label: 'No in-house blockchain expertise', points: '0 pts' },
+                  { value: 'basic_external', label: 'Basic understanding, external consultants needed', points: '3 pts' },
+                  { value: '1-2_devs', label: '1-2 blockchain developers on staff', points: '6 pts' },
+                  { value: 'dedicated_team', label: 'Dedicated blockchain team (3+ developers)', points: '10 pts' }
+                ].map(opt => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition cursor-pointer ${
+                      hybridSettlement.teamExpertise === opt.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="teamExpertise"
+                        value={opt.value}
+                        checked={hybridSettlement.teamExpertise === opt.value}
+                        onChange={(e) => { setHybridError(''); setHybridSettlement(prev => ({ ...prev, teamExpertise: e.target.value })); }}
+                        className="h-4 w-4 border-primary text-primary focus:ring-ring"
+                      />
+                      <span className="text-sm text-foreground">{opt.label}</span>
+                    </div>
+                    <span className="text-xs font-mono text-muted-foreground">{opt.points}</span>
+                  </label>
+                ))}
+              </div>
+
+              {hybridError && (
+                <div className="flex items-center gap-2 text-destructive text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  {hybridError}
+                </div>
+              )}
+
+              {/* Live complexity preview */}
+              {hybridSettlement.infrastructure && hybridSettlement.interoperability && (
+                <div className="p-4 bg-muted/50 border border-border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Link className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">Complexity Impact Preview</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Multiplier:</span>
+                      <span className="ml-2 font-mono font-semibold text-foreground">{hybridComplexityMultiplier.toFixed(1)}×</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">DLT Score:</span>
+                      <span className="ml-2 font-mono font-semibold text-foreground">{hybridReadinessScore}/20</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : isGeoSection ? (
             /* Section G: Geographic Footprint */
             <div className="space-y-4 mb-8">
               <label className="block text-sm font-medium text-foreground">
