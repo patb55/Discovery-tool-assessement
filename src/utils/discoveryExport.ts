@@ -125,6 +125,11 @@ const formatDate = (): string => new Date().toLocaleDateString('en-US', { year: 
 const getFileSafeDate = (): string => new Date().toISOString().split('T')[0];
 const getFileSafeName = (name: string): string => (name || 'Discovery').replace(/[^a-zA-Z0-9]/g, '-').substring(0, 30);
 
+const formatNumber = (value: number): string => {
+  if (typeof value !== 'number' || isNaN(value)) return '0';
+  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
+
 // === JSON Export ===
 export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
   const scores = calculateScores(d);
@@ -356,7 +361,7 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
   doc.text('Transaction Volume Summary', m, y);
 
   const volData = [
-    ['Monthly Volume', d.monthlyVolume ? d.monthlyVolume.toLocaleString() : 'N/A'],
+    ['Monthly Volume', d.monthlyVolume ? formatNumber(d.monthlyVolume) : 'N/A'],
     ['Annual Growth Rate', `${d.annualGrowthRate || 0}%`],
     ['Cross-Border %', `${d.crossBorderPercent || 0}%`],
     ['Currencies Handled', `${d.currencyCount || 0}`],
@@ -382,7 +387,7 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
     autoTable(doc, {
       startY: y + 4,
       head: [['Currency Pair', 'Monthly Volume']],
-      body: validCorridors.map(c => [c.currencyPair, c.monthlyVolume.toLocaleString()]),
+      body: validCorridors.map(c => [c.currencyPair, formatNumber(c.monthlyVolume)]),
       margin: { left: m, right: m },
       headStyles: { fillColor: [59, 130, 246], textColor: 255, fontSize: 9 },
       bodyStyles: { fontSize: 9 },
@@ -479,7 +484,7 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
     doc.setTextColor(59, 130, 246);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('⚡ Wholesale Settlement / CBDC Strategy Active', m + 8, y + 10);
+    doc.text('Wholesale Settlement / CBDC Strategy Active', m + 8, y + 10);
     tableEnd = y + 20;
   }
 
@@ -561,7 +566,7 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
   y = 30;
   phases.forEach((p, i) => {
     doc.setFillColor(240, 248, 255);
-    doc.roundedRect(m, y, pw - 2 * m, 40, 3, 3, 'F');
+    doc.roundedRect(m, y, pw - 2 * m, 36, 3, 3, 'F');
     doc.setFillColor(59, 130, 246);
     doc.circle(m + 8, y + 8, 5, 'F');
     doc.setTextColor(255, 255, 255);
@@ -569,35 +574,35 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
     doc.setFont('helvetica', 'bold');
     doc.text(String(i + 1), m + 8, y + 10, { align: 'center' });
     doc.setTextColor(40, 40, 40);
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.text(p.phase, m + 18, y + 10);
     doc.setTextColor(100, 100, 100);
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
     doc.text(p.timeline, pw - m - 5, y + 10, { align: 'right' });
     doc.setTextColor(60, 60, 60);
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     p.actions.forEach((a, ai) => {
-      doc.text(`• ${a}`, m + 18, y + 18 + ai * 5);
+      doc.text(`• ${a}`, m + 18, y + 17 + ai * 4.5);
     });
-    y += 45;
+    y += 39;
   });
 
   // Translation cost impact
-  y += 5;
+  y += 3;
   doc.setFillColor(255, 250, 230);
-  doc.roundedRect(m, y, pw - 2 * m, 22, 3, 3, 'F');
+  doc.roundedRect(m, y, pw - 2 * m, 20, 3, 3, 'F');
   doc.setTextColor(161, 98, 7);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text('Estimated Monthly Translation Cost Impact', m + 8, y + 9);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(`${d.monthlyVolume.toLocaleString()} msgs × ${d.crossBorderPercent}% cross-border × €0.235/tx = €${Math.round(estimatedMonthlyCost).toLocaleString()}/month`, m + 8, y + 17);
+  doc.text(`${formatNumber(d.monthlyVolume)} msgs x ${d.crossBorderPercent}% cross-border x EUR 0.235/tx = EUR ${formatNumber(Math.round(estimatedMonthlyCost))}/month`, m + 8, y + 17);
 
   // CTA
-  y += 30;
+  y += 24;
   doc.setFillColor(59, 130, 246);
   doc.roundedRect(m, y, pw - 2 * m, 25, 4, 4, 'F');
   doc.setTextColor(255, 255, 255);

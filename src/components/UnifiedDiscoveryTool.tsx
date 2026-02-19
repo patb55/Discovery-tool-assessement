@@ -419,7 +419,7 @@ const Step2 = ({ formData: d, update, addCorridor, removeCorridor, updateCorrido
     <div className="grid md:grid-cols-2 gap-4">
       <div>
         <FieldLabel label="Monthly Payment Message Volume" helper="Average number of payment messages per month. For volumes above 20M, contact us for enterprise assessment." />
-        <input type="number" min={1000} max={20000000} value={d.monthlyVolume || ''} onChange={e => update('monthlyVolume', parseInt(e.target.value) || 0)}
+        <input type="number" min={1000} max={20000000} value={d.monthlyVolume || ''} onChange={e => update('monthlyVolume', e.target.valueAsNumber || 0)}
           className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
           placeholder="1,000 – 20,000,000" />
       </div>
@@ -453,7 +453,7 @@ const Step2 = ({ formData: d, update, addCorridor, removeCorridor, updateCorrido
             <input type="text" value={c.currencyPair} onChange={e => updateCorridor(i, 'currencyPair', e.target.value)}
               className="flex-1 px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
               placeholder="e.g. EUR-USD" />
-            <input type="number" min={0} value={c.monthlyVolume || ''} onChange={e => updateCorridor(i, 'monthlyVolume', parseInt(e.target.value) || 0)}
+            <input type="number" min={0} value={c.monthlyVolume || ''} onChange={e => updateCorridor(i, 'monthlyVolume', e.target.valueAsNumber || 0)}
               className="w-32 px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
               placeholder="Volume" />
             {d.corridors.length > 1 && (
