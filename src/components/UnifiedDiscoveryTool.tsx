@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson, Info, Plus, Trash2, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateDiscoveryPDF, generateDiscoveryJSON, calculateScores, type DiscoveryFormData, type DiscoveryScores } from '@/utils/discoveryExport';
+import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/PBC-Logo-Circuit.svg';
+
+async function sha256(message: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 const INITIAL_FORM: DiscoveryFormData = {
   institutionName: '', institutionType: '', totalAssets: '', countriesOfOperation: 0,
@@ -60,13 +68,26 @@ const UnifiedDiscoveryTool = () => {
   const COOLDOWN_MS = 3000;
   const TOTAL_STEPS = 6;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [isValidating, setIsValidating] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'ISO2025Tech') {
-      setIsAuthenticated(true);
-      setShowError(false);
-    } else {
+    setIsValidating(true);
+    try {
+      const passwordHash = await sha256(password);
+      const { data, error } = await supabase.functions.invoke('validate-password', {
+        body: { passwordHash, tool: 'discovery' }
+      });
+      if (error || !data?.valid) {
+        setShowError(true);
+      } else {
+        setIsAuthenticated(true);
+        setShowError(false);
+      }
+    } catch {
       setShowError(true);
+    } finally {
+      setIsValidating(false);
     }
   };
 
@@ -164,8 +185,8 @@ const UnifiedDiscoveryTool = () => {
                   <span>Incorrect password. Please try again.</span>
                 </div>
               )}
-              <button type="submit" className="w-full bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition">
-                Access Assessment
+              <button type="submit" disabled={isValidating} className="w-full bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition disabled:opacity-50">
+                {isValidating ? 'Validating...' : 'Access Assessment'}
               </button>
             </form>
             <div className="mt-8 pt-6 border-t border-border text-center">

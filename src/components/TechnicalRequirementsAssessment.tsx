@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson, Info, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generatePDFReport, generateJSONExport } from '@/utils/technicalAssessmentExport';
+import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/PBC-Logo-Circuit.svg';
+
+async function sha256(message: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 const TechnicalRequirementsAssessment = () => {
   const { toast } = useToast();
@@ -84,13 +92,26 @@ const TechnicalRequirementsAssessment = () => {
   const isGlobalAutoCalculated = selectedRegions.length >= 3;
   const isChinaOnlySelected = selectedRegions.length === 1 && selectedRegions[0] === 'China (mainland operations)';
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [isValidating, setIsValidating] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'ISO2025Tech') {
-      setIsAuthenticated(true);
-      setShowError(false);
-    } else {
+    setIsValidating(true);
+    try {
+      const passwordHash = await sha256(password);
+      const { data, error } = await supabase.functions.invoke('validate-password', {
+        body: { passwordHash, tool: 'technical' }
+      });
+      if (error || !data?.valid) {
+        setShowError(true);
+      } else {
+        setIsAuthenticated(true);
+        setShowError(false);
+      }
+    } catch {
       setShowError(true);
+    } finally {
+      setIsValidating(false);
     }
   };
 
@@ -661,9 +682,10 @@ const TechnicalRequirementsAssessment = () => {
 
               <button
                 type="submit"
-                className="w-full bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition"
+                className="w-full bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition disabled:opacity-50"
+                disabled={isValidating}
               >
-                Access Assessment
+                {isValidating ? 'Validating...' : 'Access Assessment'}
               </button>
             </form>
 
