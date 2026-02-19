@@ -1,0 +1,614 @@
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// === Types ===
+export interface DiscoveryFormData {
+  // Step 1
+  institutionName: string;
+  institutionType: string;
+  totalAssets: string;
+  countriesOfOperation: number;
+  regions: string[];
+  isGlobal: boolean;
+  // Step 2
+  monthlyVolume: number;
+  annualGrowthRate: number;
+  crossBorderPercent: number;
+  corridors: { currencyPair: string; monthlyVolume: number }[];
+  currencyCount: number;
+  reconciliationComplexity: string;
+  // Step 3
+  coreSystem: string;
+  systemAge: string;
+  swiftConnectivity: string;
+  messagingFormats: string[];
+  isoSendCapable: string;
+  isoReceiveCapable: string;
+  extendedFieldsCapable: string;
+  integrationComplexity: string;
+  itTeamSize: string;
+  blockchainExperience: boolean;
+  // Step 4
+  wholesaleCbdcStrategy: boolean;
+  enhancedDataMandateReadiness: string;
+  primaryComplianceMotivation: string;
+  // Step 5
+  complianceBudget: string;
+  urgency: string;
+  targetGoLive: string;
+  translationFeeTolerance: string;
+  vendorSelectionStatus: string;
+  // Step 6
+  executiveSponsorship: string;
+  dedicatedPM: string;
+  changeManagement: string;
+  testingEnvironment: string;
+  rollbackCapability: string;
+  staffTraining: string;
+}
+
+export interface DiscoveryScores {
+  overallReadiness: number;
+  technicalReadiness: number;
+  organizationalReadiness: number;
+  riskLevel: string;
+}
+
+// === Scoring ===
+export const calculateTechnicalReadiness = (d: DiscoveryFormData): number => {
+  let score = 0;
+  // Core system age
+  const ageMap: Record<string, number> = { 'Latest version': 20, '1-2 years old': 15, '3-5 years old': 10, '5-10 years old': 5, 'Over 10 years old': 0 };
+  score += ageMap[d.systemAge] ?? 0;
+  // ISO send
+  const isoMap: Record<string, number> = { 'Yes': 15, 'In progress': 8, 'No': 0 };
+  score += isoMap[d.isoSendCapable] ?? 0;
+  // ISO receive
+  score += isoMap[d.isoReceiveCapable] ?? 0;
+  // Integration complexity
+  const intMap: Record<string, number> = { 'Low': 15, 'Medium': 10, 'High': 5, 'Very High': 0 };
+  score += intMap[d.integrationComplexity] ?? 0;
+  // IT team size
+  const teamMap: Record<string, number> = { '10+': 15, '6-10': 12, '3-5': 8, '1-2': 4, '0': 0 };
+  score += teamMap[d.itTeamSize] ?? 0;
+  // Extended fields
+  const extMap: Record<string, number> = { 'Yes': 10, 'Partial': 5, 'No': 0 };
+  score += extMap[d.extendedFieldsCapable] ?? 0;
+  // ISO 20022 messaging format checked
+  score += d.messagingFormats.includes('ISO 20022 (MX)') ? 10 : 0;
+  return score; // max 100
+};
+
+export const calculateOrganizationalReadiness = (d: DiscoveryFormData): number => {
+  let score = 0;
+  const sponsorMap: Record<string, number> = { 'C-suite champion': 25, 'Dedicated sponsor': 20, 'Active support': 15, 'Awareness': 5, 'None': 0 };
+  score += sponsorMap[d.executiveSponsorship] ?? 0;
+  score += d.dedicatedPM === 'Yes' ? 20 : 0;
+  const cmMap: Record<string, number> = { 'Strong': 20, 'Moderate': 12, 'Limited': 5, 'None': 0 };
+  score += cmMap[d.changeManagement] ?? 0;
+  const testMap: Record<string, number> = { 'Yes': 20, 'Partial': 10, 'No': 0 };
+  score += testMap[d.testingEnvironment] ?? 0;
+  const trainMap: Record<string, number> = { 'Complete': 15, 'In progress': 8, 'Planned': 3, 'Not started': 0 };
+  score += trainMap[d.staffTraining] ?? 0;
+  return score; // max 100
+};
+
+export const calculateScores = (d: DiscoveryFormData): DiscoveryScores => {
+  const tech = calculateTechnicalReadiness(d);
+  const org = calculateOrganizationalReadiness(d);
+  const overall = Math.round(tech * 0.6 + org * 0.4);
+  let riskLevel = 'LOW';
+  if (overall <= 40) riskLevel = 'CRITICAL';
+  else if (overall <= 60) riskLevel = 'HIGH';
+  else if (overall <= 80) riskLevel = 'MEDIUM';
+  return { overallReadiness: overall, technicalReadiness: tech, organizationalReadiness: org, riskLevel };
+};
+
+const getRecommendedPathway = (d: DiscoveryFormData, scores: DiscoveryScores): string => {
+  if (d.blockchainExperience && d.wholesaleCbdcStrategy) return 'Hybrid';
+  if (d.blockchainExperience) return 'DLT';
+  return 'Traditional';
+};
+
+const getTopFindings = (d: DiscoveryFormData, scores: DiscoveryScores): string[] => {
+  const findings: string[] = [];
+  if (d.isoSendCapable === 'No') findings.push('ISO 20022 send capability not yet implemented — critical gap for November 2025 deadline.');
+  if (d.isoReceiveCapable === 'No') findings.push('ISO 20022 receive capability missing — risk of rejected incoming payments.');
+  if (scores.organizationalReadiness < 40) findings.push('Organizational readiness is critically low — executive sponsorship and change management need urgent attention.');
+  if (d.systemAge === 'Over 10 years old' || d.systemAge === '5-10 years old') findings.push('Core banking system age poses significant upgrade complexity.');
+  if (d.integrationComplexity === 'Very High' || d.integrationComplexity === 'High') findings.push('High integration complexity will require extended testing and parallel-run periods.');
+  if (d.extendedFieldsCapable === 'No') findings.push('Extended data fields not supported — structured address mandate by November 2026 at risk.');
+  return findings.slice(0, 3);
+};
+
+const formatDate = (): string => new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+const getFileSafeDate = (): string => new Date().toISOString().split('T')[0];
+const getFileSafeName = (name: string): string => (name || 'Discovery').replace(/[^a-zA-Z0-9]/g, '-').substring(0, 30);
+
+// === JSON Export ===
+export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
+  const scores = calculateScores(d);
+  const translationCostPerTx = 0.235;
+  const estimatedMonthlyCost = d.monthlyVolume * (d.crossBorderPercent / 100) * translationCostPerTx;
+
+  const output = {
+    assessmentType: 'unified-discovery-v1',
+    assessmentDate: new Date().toISOString(),
+    institutionProfile: {
+      name: d.institutionName,
+      type: d.institutionType,
+      assetSize: d.totalAssets,
+      countries: d.countriesOfOperation,
+      regions: d.regions,
+      isGlobal: d.isGlobal
+    },
+    transactionProfile: {
+      monthlyVolume: d.monthlyVolume,
+      annualGrowthRate: d.annualGrowthRate,
+      crossBorderPercent: d.crossBorderPercent,
+      corridors: d.corridors.filter(c => c.currencyPair),
+      currencyCount: d.currencyCount,
+      reconciliationComplexity: d.reconciliationComplexity
+    },
+    technicalProfile: {
+      coreSystem: d.coreSystem,
+      systemAge: d.systemAge,
+      swiftConnectivity: d.swiftConnectivity,
+      messagingFormats: d.messagingFormats,
+      isoSendCapable: d.isoSendCapable,
+      isoReceiveCapable: d.isoReceiveCapable,
+      extendedFieldsCapable: d.extendedFieldsCapable,
+      integrationComplexity: d.integrationComplexity,
+      itTeamSize: d.itTeamSize,
+      blockchainExperience: d.blockchainExperience
+    },
+    strategicProfile: {
+      wholesaleCbdcStrategy: d.wholesaleCbdcStrategy,
+      enhancedDataMandateReadiness: d.enhancedDataMandateReadiness,
+      primaryComplianceMotivation: d.primaryComplianceMotivation
+    },
+    budgetProfile: {
+      complianceBudget: d.complianceBudget,
+      urgency: d.urgency,
+      targetGoLive: d.targetGoLive,
+      translationFeeTolerance: d.translationFeeTolerance,
+      vendorSelectionStatus: d.vendorSelectionStatus
+    },
+    organizationalProfile: {
+      executiveSponsorship: d.executiveSponsorship,
+      dedicatedPM: d.dedicatedPM,
+      changeManagement: d.changeManagement,
+      testingEnvironment: d.testingEnvironment,
+      rollbackCapability: d.rollbackCapability,
+      staffTraining: d.staffTraining
+    },
+    scores,
+    estimatedMonthlyTranslationCost: Math.round(estimatedMonthlyCost)
+  };
+
+  const blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Discovery-${getFileSafeName(d.institutionName)}-${getFileSafeDate()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// === PDF Export ===
+export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
+  const doc = new jsPDF();
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const m = 20;
+  let y = 0;
+  const scores = calculateScores(d);
+  const pathway = getRecommendedPathway(d, scores);
+  const findings = getTopFindings(d, scores);
+  const translationCostPerTx = 0.235;
+  const estimatedMonthlyCost = d.monthlyVolume * (d.crossBorderPercent / 100) * translationCostPerTx;
+  const totalPages = 4;
+
+  const addFooter = (pageNum: number) => {
+    doc.setFontSize(9);
+    doc.setTextColor(128, 128, 128);
+    doc.text(`Page ${pageNum} of ${totalPages}`, pw - m, ph - 10, { align: 'right' });
+    doc.text(`Prepared by: Patrick Bayce-Chalvin | ${formatDate()}`, pw / 2, ph - 10, { align: 'center' });
+  };
+
+  // ========== PAGE 1: Executive Summary ==========
+  doc.setFillColor(59, 130, 246);
+  doc.rect(0, 0, pw, 45, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ISO 20022 Unified Discovery', pw / 2, 18, { align: 'center' });
+  doc.setFontSize(16);
+  doc.text('Assessment Report', pw / 2, 28, { align: 'center' });
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Comprehensive Readiness Evaluation', pw / 2, 38, { align: 'center' });
+
+  y = 58;
+  doc.setTextColor(60, 60, 60);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Institution:', m, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(d.institutionName || 'Not Specified', m + 30, y);
+  y += 7;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Date:', m, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(formatDate(), m + 18, y);
+  y += 7;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Type:', m, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(d.institutionType || 'N/A', m + 18, y);
+
+  // Overall readiness score card
+  y += 15;
+  const scoreColor = scores.overallReadiness >= 81 ? [34, 197, 94] : scores.overallReadiness >= 61 ? [251, 188, 4] : scores.overallReadiness >= 41 ? [234, 150, 50] : [234, 67, 53];
+  doc.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+  doc.roundedRect(m, y, 70, 40, 4, 4, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(28);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${scores.overallReadiness}/100`, m + 35, y + 18, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text('OVERALL READINESS', m + 35, y + 30, { align: 'center' });
+
+  // 3-column scores
+  const colX = m + 80;
+  const colW = (pw - colX - m) / 3;
+  [
+    { label: 'Technical', value: scores.technicalReadiness },
+    { label: 'Organizational', value: scores.organizationalReadiness },
+    { label: 'Risk Level', value: scores.riskLevel as any }
+  ].forEach((item, i) => {
+    const x = colX + i * colW;
+    doc.setFillColor(240, 248, 255);
+    doc.roundedRect(x, y, colW - 4, 40, 3, 3, 'F');
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(item.label, x + (colW - 4) / 2, y + 10, { align: 'center' });
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    const val = typeof item.value === 'number' ? `${item.value}` : item.value;
+    doc.text(val, x + (colW - 4) / 2, y + 28, { align: 'center' });
+  });
+
+  // Risk badge
+  y += 50;
+  const riskColors: Record<string, number[]> = { LOW: [34, 197, 94], MEDIUM: [251, 188, 4], HIGH: [234, 150, 50], CRITICAL: [234, 67, 53] };
+  const rc = riskColors[scores.riskLevel] || [128, 128, 128];
+  doc.setFillColor(rc[0], rc[1], rc[2]);
+  doc.roundedRect(m, y, 40, 12, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text(scores.riskLevel, m + 20, y + 8, { align: 'center' });
+  doc.setTextColor(60, 60, 60);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Recommended Pathway: ${pathway}`, m + 48, y + 8);
+
+  // Top 3 findings
+  y += 22;
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(40, 40, 40);
+  doc.text('Top Findings', m, y);
+  y += 8;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  if (findings.length === 0) {
+    doc.text('No critical findings — institution appears well prepared.', m + 5, y);
+  } else {
+    findings.forEach((f, i) => {
+      const lines = doc.splitTextToSize(`${i + 1}. ${f}`, pw - 2 * m - 10);
+      doc.text(lines, m + 5, y);
+      y += lines.length * 5 + 3;
+    });
+  }
+
+  addFooter(1);
+
+  // ========== PAGE 2: Technical & Transaction Profile ==========
+  doc.addPage();
+  doc.setFillColor(59, 130, 246);
+  doc.rect(0, 0, pw, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Technical & Transaction Profile', pw / 2, 13, { align: 'center' });
+
+  autoTable(doc, {
+    startY: 28,
+    head: [['Parameter', 'Value']],
+    body: [
+      ['Core Banking System', d.coreSystem || 'N/A'],
+      ['System Age', d.systemAge || 'N/A'],
+      ['SWIFT Connectivity', d.swiftConnectivity || 'N/A'],
+      ['Messaging Formats', d.messagingFormats.join(', ') || 'N/A'],
+      ['ISO 20022 Send', d.isoSendCapable || 'N/A'],
+      ['ISO 20022 Receive', d.isoReceiveCapable || 'N/A'],
+      ['Extended Data Fields', d.extendedFieldsCapable || 'N/A'],
+      ['Integration Complexity', d.integrationComplexity || 'N/A'],
+      ['IT Team Size', d.itTeamSize || 'N/A'],
+      ['DLT/Blockchain Exp.', d.blockchainExperience ? 'Yes' : 'No'],
+    ],
+    margin: { left: m, right: m },
+    headStyles: { fillColor: [59, 130, 246], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 9, textColor: [60, 60, 60] },
+    columnStyles: { 0: { cellWidth: 60, fontStyle: 'bold' } }
+  });
+
+  let tableEnd = (doc as any).lastAutoTable?.finalY || 120;
+
+  // Volume & corridors
+  y = tableEnd + 12;
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(40, 40, 40);
+  doc.text('Transaction Volume Summary', m, y);
+
+  const volData = [
+    ['Monthly Volume', d.monthlyVolume ? d.monthlyVolume.toLocaleString() : 'N/A'],
+    ['Annual Growth Rate', `${d.annualGrowthRate || 0}%`],
+    ['Cross-Border %', `${d.crossBorderPercent || 0}%`],
+    ['Currencies Handled', `${d.currencyCount || 0}`],
+    ['Reconciliation Complexity', d.reconciliationComplexity || 'N/A'],
+  ];
+  autoTable(doc, {
+    startY: y + 5,
+    body: volData,
+    margin: { left: m, right: m },
+    bodyStyles: { fontSize: 9, textColor: [60, 60, 60] },
+    columnStyles: { 0: { cellWidth: 60, fontStyle: 'bold' } },
+    theme: 'plain',
+    styles: { cellPadding: 2 }
+  });
+
+  tableEnd = (doc as any).lastAutoTable?.finalY || y + 50;
+  const validCorridors = d.corridors.filter(c => c.currencyPair);
+  if (validCorridors.length > 0) {
+    y = tableEnd + 8;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Payment Corridors', m, y);
+    autoTable(doc, {
+      startY: y + 4,
+      head: [['Currency Pair', 'Monthly Volume']],
+      body: validCorridors.map(c => [c.currencyPair, c.monthlyVolume.toLocaleString()]),
+      margin: { left: m, right: m },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 9 },
+      columnStyles: { 1: { halign: 'right' } }
+    });
+  }
+
+  // Enhanced data mandate
+  tableEnd = (doc as any).lastAutoTable?.finalY || y + 30;
+  y = tableEnd + 10;
+  if (y < ph - 40) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(40, 40, 40);
+    doc.text('Enhanced Data Mandate Status', m, y);
+    y += 7;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text(d.enhancedDataMandateReadiness || 'Not specified', m + 5, y);
+  }
+
+  // Critical technical gaps
+  y += 12;
+  if (y < ph - 50) {
+    const gaps: string[][] = [];
+    if (d.isoSendCapable === 'No') gaps.push(['CRITICAL', 'ISO 20022 Send', 'Cannot send compliant messages']);
+    if (d.isoReceiveCapable === 'No') gaps.push(['HIGH', 'ISO 20022 Receive', 'Cannot receive compliant messages']);
+    if (d.extendedFieldsCapable === 'No') gaps.push(['HIGH', 'Extended Fields', 'Structured address mandate at risk']);
+    if (d.integrationComplexity === 'Very High') gaps.push(['MEDIUM', 'Integration', 'Very high complexity adds risk']);
+    if (gaps.length > 0) {
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('Critical Technical Gaps', m, y);
+      autoTable(doc, {
+        startY: y + 4,
+        head: [['Priority', 'Area', 'Detail']],
+        body: gaps,
+        margin: { left: m, right: m },
+        headStyles: { fillColor: [234, 67, 53], textColor: 255, fontSize: 9 },
+        bodyStyles: { fontSize: 9 },
+        didParseCell: (data) => {
+          if (data.column.index === 0 && data.section === 'body') {
+            const p = data.cell.raw as string;
+            if (p === 'CRITICAL') { data.cell.styles.fillColor = [254, 226, 226]; data.cell.styles.textColor = [185, 28, 28]; }
+            else if (p === 'HIGH') { data.cell.styles.fillColor = [255, 237, 213]; data.cell.styles.textColor = [194, 65, 12]; }
+            else { data.cell.styles.fillColor = [254, 249, 195]; data.cell.styles.textColor = [161, 98, 7]; }
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      });
+    }
+  }
+  addFooter(2);
+
+  // ========== PAGE 3: Strategic & Organizational Profile ==========
+  doc.addPage();
+  doc.setFillColor(59, 130, 246);
+  doc.rect(0, 0, pw, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Strategic & Organizational Profile', pw / 2, 13, { align: 'center' });
+
+  y = 30;
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(40, 40, 40);
+  doc.text('Budget & Timeline', m, y);
+
+  autoTable(doc, {
+    startY: y + 5,
+    body: [
+      ['Compliance Budget', d.complianceBudget || 'N/A'],
+      ['Implementation Urgency', d.urgency || 'N/A'],
+      ['Target Go-Live', d.targetGoLive || 'Not set'],
+      ['Translation Fee Tolerance', d.translationFeeTolerance || 'N/A'],
+      ['Vendor Selection Status', d.vendorSelectionStatus || 'N/A'],
+    ],
+    margin: { left: m, right: m },
+    bodyStyles: { fontSize: 9, textColor: [60, 60, 60] },
+    columnStyles: { 0: { cellWidth: 60, fontStyle: 'bold' } },
+    theme: 'plain',
+    styles: { cellPadding: 2 }
+  });
+  tableEnd = (doc as any).lastAutoTable?.finalY || y + 50;
+
+  // CBDC flag
+  if (d.wholesaleCbdcStrategy) {
+    y = tableEnd + 8;
+    doc.setFillColor(240, 248, 255);
+    doc.roundedRect(m, y, pw - 2 * m, 16, 3, 3, 'F');
+    doc.setTextColor(59, 130, 246);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('⚡ Wholesale Settlement / CBDC Strategy Active', m + 8, y + 10);
+    tableEnd = y + 20;
+  }
+
+  // Org readiness breakdown
+  y = tableEnd + 10;
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(40, 40, 40);
+  doc.text('Organizational Readiness Breakdown', m, y);
+
+  autoTable(doc, {
+    startY: y + 5,
+    body: [
+      ['Executive Sponsorship', d.executiveSponsorship || 'N/A'],
+      ['Dedicated Project Manager', d.dedicatedPM || 'N/A'],
+      ['Change Management', d.changeManagement || 'N/A'],
+      ['Testing Environment', d.testingEnvironment || 'N/A'],
+      ['Rollback Capability', d.rollbackCapability || 'N/A'],
+      ['Staff Training', d.staffTraining || 'N/A'],
+    ],
+    margin: { left: m, right: m },
+    bodyStyles: { fontSize: 9, textColor: [60, 60, 60] },
+    columnStyles: { 0: { cellWidth: 60, fontStyle: 'bold' } },
+    theme: 'plain',
+    styles: { cellPadding: 2 }
+  });
+  tableEnd = (doc as any).lastAutoTable?.finalY || y + 60;
+
+  // Key risks
+  y = tableEnd + 10;
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Key Risks & Dependencies', m, y);
+  y += 8;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  const risks: string[] = [];
+  if (d.executiveSponsorship === 'None' || d.executiveSponsorship === 'Awareness') risks.push('Insufficient executive sponsorship may delay decision-making and resource allocation.');
+  if (d.dedicatedPM === 'No') risks.push('No dedicated project manager increases risk of scope creep and missed deadlines.');
+  if (d.testingEnvironment === 'No') risks.push('No testing environment — production risk during migration.');
+  if (d.rollbackCapability === 'No') risks.push('No rollback capability — cannot revert if migration fails.');
+  if (d.vendorSelectionStatus === 'Not started') risks.push('Vendor selection not started — timeline may slip.');
+  if (risks.length === 0) risks.push('No critical risks identified at this stage.');
+  risks.forEach(r => {
+    const lines = doc.splitTextToSize(`• ${r}`, pw - 2 * m - 5);
+    doc.text(lines, m + 5, y);
+    y += lines.length * 5 + 2;
+  });
+
+  addFooter(3);
+
+  // ========== PAGE 4: Recommended Next Steps ==========
+  doc.addPage();
+  doc.setFillColor(59, 130, 246);
+  doc.rect(0, 0, pw, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Recommended Next Steps', pw / 2, 13, { align: 'center' });
+
+  // 5-phase timeline scaled to urgency
+  const urgencyScale: Record<string, string[]> = {
+    'Immediate (started)': ['Weeks 1-2', 'Weeks 3-4', 'Months 2-3', 'Months 3-4', 'Month 5'],
+    'Standard (6-12 months)': ['Months 1-2', 'Months 3-4', 'Months 5-7', 'Months 8-9', 'Months 10-12'],
+    'Planned (12-18 months)': ['Months 1-3', 'Months 4-6', 'Months 7-10', 'Months 11-14', 'Months 15-18'],
+    'Flexible (18+ months)': ['Months 1-4', 'Months 5-8', 'Months 9-14', 'Months 15-20', 'Months 21-24'],
+  };
+  const timeline = urgencyScale[d.urgency] || urgencyScale['Standard (6-12 months)'];
+
+  const phases = [
+    { phase: 'Phase 1: Assessment & Planning', timeline: timeline[0], actions: ['Complete vendor engagement & gap analysis', 'Secure budget approvals', 'Establish project governance', 'Define success criteria'] },
+    { phase: 'Phase 2: Technical Discovery', timeline: timeline[1], actions: ['Map current message flows', 'Identify integration dependencies', 'Assess data quality for structured addresses', 'Set up testing environment'] },
+    { phase: 'Phase 3: Development & Config', timeline: timeline[2], actions: ['Configure ISO 20022 mappings', 'Build integration components', 'Train technical staff', 'Execute unit testing'] },
+    { phase: 'Phase 4: Pilot & Parallel Run', timeline: timeline[3], actions: ['Limited production deployment', 'Run parallel with legacy formats', 'Monitor & resolve issues', 'Validate rollback procedures'] },
+    { phase: 'Phase 5: Full Rollout', timeline: timeline[4], actions: ['Full production deployment', 'Decommission legacy formats', 'Complete staff training', 'Establish ongoing monitoring'] },
+  ];
+
+  y = 30;
+  phases.forEach((p, i) => {
+    doc.setFillColor(240, 248, 255);
+    doc.roundedRect(m, y, pw - 2 * m, 40, 3, 3, 'F');
+    doc.setFillColor(59, 130, 246);
+    doc.circle(m + 8, y + 8, 5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(i + 1), m + 8, y + 10, { align: 'center' });
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(11);
+    doc.text(p.phase, m + 18, y + 10);
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'italic');
+    doc.text(p.timeline, pw - m - 5, y + 10, { align: 'right' });
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    p.actions.forEach((a, ai) => {
+      doc.text(`• ${a}`, m + 18, y + 18 + ai * 5);
+    });
+    y += 45;
+  });
+
+  // Translation cost impact
+  y += 5;
+  doc.setFillColor(255, 250, 230);
+  doc.roundedRect(m, y, pw - 2 * m, 22, 3, 3, 'F');
+  doc.setTextColor(161, 98, 7);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Estimated Monthly Translation Cost Impact', m + 8, y + 9);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`${d.monthlyVolume.toLocaleString()} msgs × ${d.crossBorderPercent}% cross-border × €0.235/tx = €${Math.round(estimatedMonthlyCost).toLocaleString()}/month`, m + 8, y + 17);
+
+  // CTA
+  y += 30;
+  doc.setFillColor(59, 130, 246);
+  doc.roundedRect(m, y, pw - 2 * m, 25, 4, 4, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Schedule your full ISO 20022 pathway analysis', pw / 2, y + 10, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Contact: patrick@bayce-chalvin.com | www.bayce-chalvin.com', pw / 2, y + 19, { align: 'center' });
+
+  addFooter(4);
+
+  doc.save(`Discovery-${getFileSafeName(d.institutionName)}-${getFileSafeDate()}.pdf`);
+};
