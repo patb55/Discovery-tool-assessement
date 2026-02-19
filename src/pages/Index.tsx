@@ -1,7 +1,7 @@
-import TechnicalRequirementsAssessment from "@/components/TechnicalRequirementsAssessment";
+import UnifiedDiscoveryTool from "@/components/UnifiedDiscoveryTool";
 
 const Index = () => {
-  return <TechnicalRequirementsAssessment />;
+  return <UnifiedDiscoveryTool />;
 };
 
 export default Index;
