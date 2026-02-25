@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson, Info, Plus, Trash2, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateDiscoveryPDF, generateDiscoveryJSON, calculateScores, type DiscoveryFormData, type DiscoveryScores } from '@/utils/discoveryExport';
@@ -156,21 +156,7 @@ const UnifiedDiscoveryTool = () => {
     update('primaryCorridorRegions', newRegions);
   };
 
-  const addCorridor = () => {
-    if (formData.corridors.length < 5) {
-      update('corridors', [...formData.corridors, { currencyPair: '', monthlyVolume: 0 }]);
-    }
-  };
-
-  const removeCorridor = (i: number) => {
-    update('corridors', formData.corridors.filter((_, idx) => idx !== i));
-  };
-
-  const updateCorridor = (i: number, field: 'currencyPair' | 'monthlyVolume', value: string | number) => {
-    const updated = [...formData.corridors];
-    updated[i] = { ...updated[i], [field]: value };
-    update('corridors', updated);
-  };
+  // Corridor helpers removed — managed inside Step2 component
 
   const nextStep = () => { if (currentStep < TOTAL_STEPS) setCurrentStep(currentStep + 1); };
   const prevStep = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
@@ -345,7 +331,7 @@ const UnifiedDiscoveryTool = () => {
           {/* Step content */}
           <div className="space-y-6 mb-8">
             {currentStep === 0 && <Step1 formData={formData} update={update} handleRegionToggle={handleRegionToggle} />}
-            {currentStep === 1 && <Step2 formData={formData} update={update} addCorridor={addCorridor} removeCorridor={removeCorridor} updateCorridor={updateCorridor} />}
+            {currentStep === 1 && <Step2 formData={formData} update={update} />}
             {currentStep === 2 && <Step3 formData={formData} update={update} handleMsgFormatToggle={handleMsgFormatToggle} />}
             {currentStep === 3 && <Step4 formData={formData} update={update} />}
             {currentStep === 4 && <Step5 formData={formData} update={update} />}
@@ -452,65 +438,164 @@ const Step1 = ({ formData: d, update, handleRegionToggle }: { formData: Discover
   </>
 );
 
-const Step2 = ({ formData: d, update, addCorridor, removeCorridor, updateCorridor }: { formData: DiscoveryFormData; update: any; addCorridor: () => void; removeCorridor: (i: number) => void; updateCorridor: (i: number, f: 'currencyPair' | 'monthlyVolume', v: any) => void }) => (
-  <>
-    <h2 className="text-xl font-bold text-foreground">Step 2: Transaction Profile</h2>
-    <div className="grid md:grid-cols-2 gap-4">
-      <div>
-        <FieldLabel label="Monthly Payment Message Volume" helper="Average number of payment messages per month. For volumes above 20M, contact us for enterprise assessment." />
-        <input type="number" min={1000} max={20000000} value={d.monthlyVolume || ''} onChange={e => update('monthlyVolume', e.target.valueAsNumber || 0)}
-          className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
-          placeholder="1,000 – 20,000,000" />
-      </div>
-      <div>
-        <FieldLabel label="Annual Growth Rate %" helper="Expected annual growth in payment volumes over next 5 years" />
-        <input type="number" min={0} max={50} value={d.annualGrowthRate || ''} onChange={e => update('annualGrowthRate', parseInt(e.target.value) || 0)}
-          className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
-          placeholder="0-50%" />
-      </div>
-      <div>
-        <FieldLabel label="Cross-Border Transaction %" />
-        <div className="flex items-center gap-3">
-          <input type="range" min={0} max={100} value={d.crossBorderPercent}
-            onChange={e => update('crossBorderPercent', parseInt(e.target.value))}
-            className="flex-1 h-2 rounded-lg appearance-none bg-secondary accent-primary" />
-          <span className="text-sm font-semibold text-foreground w-12 text-right">{d.crossBorderPercent}%</span>
+const COMMON_PAIRS = [
+  'EUR-USD', 'EUR-GBP', 'EUR-CHF', 'EUR-CNY',
+  'EUR-JPY', 'EUR-SGD', 'EUR-AUD', 'EUR-CAD',
+  'EUR-SEK', 'EUR-NOK', 'EUR-PLN', 'EUR-DKK',
+  'GBP-USD', 'USD-JPY', 'USD-CNY', 'USD-SGD',
+  'USD-MXN', 'USD-BRL', 'USD-INR', 'USD-HKD',
+];
+
+const Step2 = ({ formData: d, update }: { formData: DiscoveryFormData; update: any }) => {
+  // Derive initial state from existing corridors
+  const initRef = useRef(false);
+  const [gridState, setGridState] = useState<Record<string, { checked: boolean; volume: number }>>(() => {
+    const state: Record<string, { checked: boolean; volume: number }> = {};
+    COMMON_PAIRS.forEach(p => {
+      const existing = d.corridors.find(c => c.currencyPair === p);
+      state[p] = { checked: !!existing && existing.monthlyVolume > 0, volume: existing?.monthlyVolume || 0 };
+    });
+    return state;
+  });
+  const [customCorridors, setCustomCorridors] = useState<{ currencyPair: string; monthlyVolume: number }[]>(() => {
+    return d.corridors.filter(c => c.currencyPair && !COMMON_PAIRS.includes(c.currencyPair));
+  });
+
+  const syncCorridors = useCallback((grid: typeof gridState, custom: typeof customCorridors) => {
+    const corridors: { currencyPair: string; monthlyVolume: number }[] = [];
+    COMMON_PAIRS.forEach(p => {
+      if (grid[p]?.checked && grid[p].volume > 0) {
+        corridors.push({ currencyPair: p, monthlyVolume: grid[p].volume });
+      }
+    });
+    custom.forEach(c => {
+      if (c.currencyPair.trim() && c.monthlyVolume > 0) {
+        corridors.push({ currencyPair: c.currencyPair.trim(), monthlyVolume: c.monthlyVolume });
+      }
+    });
+    update('corridors', corridors.length > 0 ? corridors : [{ currencyPair: '', monthlyVolume: 0 }]);
+  }, [update]);
+
+  useEffect(() => {
+    if (initRef.current) {
+      syncCorridors(gridState, customCorridors);
+    }
+    initRef.current = true;
+  }, [gridState, customCorridors, syncCorridors]);
+
+  const togglePair = (pair: string) => {
+    setGridState(prev => {
+      const next = { ...prev, [pair]: { checked: !prev[pair].checked, volume: prev[pair].checked ? 0 : prev[pair].volume } };
+      return next;
+    });
+  };
+
+  const setGridVolume = (pair: string, vol: number) => {
+    setGridState(prev => ({ ...prev, [pair]: { ...prev[pair], volume: vol } }));
+  };
+
+  const addCustom = () => {
+    setCustomCorridors(prev => [...prev, { currencyPair: '', monthlyVolume: 0 }]);
+  };
+
+  const removeCustom = (i: number) => {
+    setCustomCorridors(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const updateCustom = (i: number, field: 'currencyPair' | 'monthlyVolume', value: any) => {
+    setCustomCorridors(prev => {
+      const next = [...prev];
+      next[i] = { ...next[i], [field]: value };
+      return next;
+    });
+  };
+
+  return (
+    <>
+      <h2 className="text-xl font-bold text-foreground">Step 2: Transaction Profile</h2>
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <FieldLabel label="Monthly Payment Message Volume" helper="Average number of payment messages per month. For volumes above 20M, contact us for enterprise assessment." />
+          <input type="number" min={1000} max={20000000} value={d.monthlyVolume || ''} onChange={e => update('monthlyVolume', e.target.valueAsNumber || 0)}
+            className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
+            placeholder="1,000 – 20,000,000" />
+        </div>
+        <div>
+          <FieldLabel label="Annual Growth Rate %" helper="Expected annual growth in payment volumes over next 5 years" />
+          <input type="number" min={0} max={50} value={d.annualGrowthRate || ''} onChange={e => update('annualGrowthRate', parseInt(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
+            placeholder="0-50%" />
+        </div>
+        <div>
+          <FieldLabel label="Cross-Border Transaction %" />
+          <div className="flex items-center gap-3">
+            <input type="range" min={0} max={100} value={d.crossBorderPercent}
+              onChange={e => update('crossBorderPercent', parseInt(e.target.value))}
+              className="flex-1 h-2 rounded-lg appearance-none bg-secondary accent-primary" />
+            <span className="text-sm font-semibold text-foreground w-12 text-right">{d.crossBorderPercent}%</span>
+          </div>
+        </div>
+        <div>
+          <FieldLabel label="Number of Currencies Handled" />
+          <input type="number" min={0} value={d.currencyCount || ''} onChange={e => update('currencyCount', parseInt(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring" />
         </div>
       </div>
+      <SelectField label="Reconciliation Complexity" value={d.reconciliationComplexity} options={RECON_COMPLEXITY} onChange={v => update('reconciliationComplexity', v)} />
+
+      {/* PART 1 — Pre-populated corridor grid */}
       <div>
-        <FieldLabel label="Number of Currencies Handled" />
-        <input type="number" min={0} value={d.currencyCount || ''} onChange={e => update('currencyCount', parseInt(e.target.value) || 0)}
-          className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring" />
+        <FieldLabel label="Payment Corridors" helper="Select your active corridors and enter monthly volumes. Combined corridor volumes should not exceed total monthly volume." />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
+          {COMMON_PAIRS.map(pair => {
+            const item = gridState[pair];
+            return (
+              <div key={pair}
+                className={`rounded-lg border p-2.5 transition-colors ${item.checked ? 'bg-primary/10 border-primary/30' : 'bg-secondary/30 border-input'}`}>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={item.checked} onChange={() => togglePair(pair)}
+                    className="h-4 w-4 rounded border-input text-primary focus:ring-ring" />
+                  <span className="text-sm font-semibold text-foreground">{pair}</span>
+                </label>
+                {item.checked && (
+                  <input type="number" min={0} value={item.volume || ''} autoFocus
+                    onChange={e => setGridVolume(pair, e.target.valueAsNumber || 0)}
+                    className="mt-1.5 w-full px-2 py-1.5 border border-input bg-background rounded text-foreground text-sm focus:ring-2 focus:ring-ring"
+                    placeholder="Monthly volume" />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
-    <SelectField label="Reconciliation Complexity" value={d.reconciliationComplexity} options={RECON_COMPLEXITY} onChange={v => update('reconciliationComplexity', v)} />
-    <div>
-      <FieldLabel label="Payment Corridors (up to 5)" helper="Add your main payment corridors. Combined corridor volumes should not exceed total monthly volume." />
-      <div className="space-y-2 mt-2">
-        {d.corridors.map((c, i) => (
-          <div key={i} className="flex gap-2 items-center">
-            <input type="text" value={c.currencyPair} onChange={e => updateCorridor(i, 'currencyPair', e.target.value)}
-              className="flex-1 px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
-              placeholder="e.g. EUR-USD" />
-            <input type="number" min={0} value={c.monthlyVolume || ''} onChange={e => updateCorridor(i, 'monthlyVolume', e.target.valueAsNumber || 0)}
-              className="w-32 px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
-              placeholder="Volume" />
-            {d.corridors.length > 1 && (
-              <button onClick={() => removeCorridor(i)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg">
+
+      {/* PART 2 — Custom corridors */}
+      <div>
+        <FieldLabel label="Other corridors (not listed above)" />
+        <div className="space-y-2 mt-2">
+          {customCorridors.map((c, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <input type="text" value={c.currencyPair} onChange={e => updateCustom(i, 'currencyPair', e.target.value)}
+                className="flex-1 px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
+                placeholder="e.g. EUR-TRY" />
+              <input type="number" min={0} value={c.monthlyVolume || ''} onChange={e => updateCustom(i, 'monthlyVolume', e.target.valueAsNumber || 0)}
+                className="w-32 px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
+                placeholder="Monthly volume" />
+              <button onClick={() => removeCustom(i)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg">
                 <Trash2 className="w-4 h-4" />
               </button>
-            )}
-          </div>
-        ))}
-        {d.corridors.length < 5 && (
-          <button onClick={addCorridor} className="flex items-center gap-1 text-sm text-primary hover:underline">
-            <Plus className="w-4 h-4" /> Add corridor
+            </div>
+          ))}
+          <button onClick={addCustom} className="flex items-center gap-1 text-sm text-primary hover:underline">
+            <Plus className="w-4 h-4" /> Add custom corridor
           </button>
-        )}
+        </div>
       </div>
-    </div>
-  </>
-);
+    </>
+  );
+};
+
+
 
 const Step3 = ({ formData: d, update, handleMsgFormatToggle }: { formData: DiscoveryFormData; update: any; handleMsgFormatToggle: (f: string, c: boolean) => void }) => (
   <>
