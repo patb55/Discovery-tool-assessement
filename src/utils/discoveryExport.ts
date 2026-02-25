@@ -28,17 +28,38 @@ export interface DiscoveryFormData {
   integrationComplexity: string;
   itTeamSize: string;
   blockchainExperience: boolean;
-  // Step 4
-  wholesaleCbdcStrategy: boolean;
+  // Step 4 - Strategic
+  dltStrategyMaturity: string;
+  november2026Priority: string;
   enhancedDataMandateReadiness: string;
   primaryComplianceMotivation: string;
-  // Step 5
+  // Step 5 - Budget
   complianceBudget: string;
   urgency: string;
   targetGoLive: string;
   translationFeeTolerance: string;
   vendorSelectionStatus: string;
-  // Step 6
+  // Step 6 - Financial Impact
+  nostroRelationshipCount: string;
+  nostroBalanceRange: string;
+  costOfCapital: string;
+  monthlyPaymentRepairVolume: string;
+  truncationRejections: string;
+  capitalTreatmentAwareness: string;
+  digitalAssetExposure: string;
+  // Step 7 - Market Context
+  institutionClassification: string;
+  geographicFootprint: string;
+  primaryCorridorRegions: string[];
+  boardAwarenessLevel: string;
+  peerBenchmarkConsent: boolean;
+  // Step 8 - Strategic Horizon
+  swiftTranslationOptInStatus: string;
+  structuredAddressReadiness: string;
+  lastSwiftStandardsReview: string;
+  strategicAmbition: string;
+  reportTypeRequested: string;
+  // Step 9 - Organizational
   executiveSponsorship: string;
   dedicatedPM: string;
   changeManagement: string;
@@ -57,26 +78,19 @@ export interface DiscoveryScores {
 // === Scoring ===
 export const calculateTechnicalReadiness = (d: DiscoveryFormData): number => {
   let score = 0;
-  // Core system age
   const ageMap: Record<string, number> = { 'Latest version': 20, '1-2 years old': 15, '3-5 years old': 10, '5-10 years old': 5, 'Over 10 years old': 0 };
   score += ageMap[d.systemAge] ?? 0;
-  // ISO send
   const isoMap: Record<string, number> = { 'Yes': 15, 'In progress': 8, 'No': 0 };
   score += isoMap[d.isoSendCapable] ?? 0;
-  // ISO receive
   score += isoMap[d.isoReceiveCapable] ?? 0;
-  // Integration complexity
   const intMap: Record<string, number> = { 'Low': 15, 'Medium': 10, 'High': 5, 'Very High': 0 };
   score += intMap[d.integrationComplexity] ?? 0;
-  // IT team size
   const teamMap: Record<string, number> = { '10+': 15, '6-10': 12, '3-5': 8, '1-2': 4, '0': 0 };
   score += teamMap[d.itTeamSize] ?? 0;
-  // Extended fields
   const extMap: Record<string, number> = { 'Yes': 10, 'Partial': 5, 'No': 0 };
   score += extMap[d.extendedFieldsCapable] ?? 0;
-  // ISO 20022 messaging format checked
   score += d.messagingFormats.includes('ISO 20022 (MX)') ? 10 : 0;
-  return score; // max 100
+  return score;
 };
 
 export const calculateOrganizationalReadiness = (d: DiscoveryFormData): number => {
@@ -90,7 +104,7 @@ export const calculateOrganizationalReadiness = (d: DiscoveryFormData): number =
   score += testMap[d.testingEnvironment] ?? 0;
   const trainMap: Record<string, number> = { 'Complete': 15, 'In progress': 8, 'Planned': 3, 'Not started': 0 };
   score += trainMap[d.staffTraining] ?? 0;
-  return score; // max 100
+  return score;
 };
 
 export const calculateScores = (d: DiscoveryFormData): DiscoveryScores => {
@@ -105,7 +119,8 @@ export const calculateScores = (d: DiscoveryFormData): DiscoveryScores => {
 };
 
 const getRecommendedPathway = (d: DiscoveryFormData, scores: DiscoveryScores): string => {
-  if (d.blockchainExperience && d.wholesaleCbdcStrategy) return 'Hybrid';
+  const dltActive = d.dltStrategyMaturity && d.dltStrategyMaturity !== 'No interest currently' && d.dltStrategyMaturity !== 'Monitoring developments';
+  if (d.blockchainExperience && dltActive) return 'Hybrid';
   if (d.blockchainExperience) return 'DLT';
   return 'Traditional';
 };
@@ -168,7 +183,8 @@ export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
       blockchainExperience: d.blockchainExperience
     },
     strategicProfile: {
-      wholesaleCbdcStrategy: d.wholesaleCbdcStrategy,
+      dltStrategyMaturity: d.dltStrategyMaturity,
+      november2026Priority: d.november2026Priority,
       enhancedDataMandateReadiness: d.enhancedDataMandateReadiness,
       primaryComplianceMotivation: d.primaryComplianceMotivation
     },
@@ -178,6 +194,29 @@ export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
       targetGoLive: d.targetGoLive,
       translationFeeTolerance: d.translationFeeTolerance,
       vendorSelectionStatus: d.vendorSelectionStatus
+    },
+    financialImpactProfile: {
+      nostroRelationshipCount: d.nostroRelationshipCount,
+      nostroBalanceRange: d.nostroBalanceRange,
+      costOfCapital: d.costOfCapital,
+      monthlyPaymentRepairVolume: d.monthlyPaymentRepairVolume,
+      truncationRejections: d.truncationRejections,
+      capitalTreatmentAwareness: d.capitalTreatmentAwareness,
+      digitalAssetExposure: d.digitalAssetExposure
+    },
+    marketContextProfile: {
+      institutionClassification: d.institutionClassification,
+      geographicFootprint: d.geographicFootprint,
+      primaryCorridorRegions: d.primaryCorridorRegions,
+      boardAwarenessLevel: d.boardAwarenessLevel,
+      peerBenchmarkConsent: d.peerBenchmarkConsent
+    },
+    strategicHorizonProfile: {
+      swiftTranslationOptInStatus: d.swiftTranslationOptInStatus,
+      structuredAddressReadiness: d.structuredAddressReadiness,
+      lastSwiftStandardsReview: d.lastSwiftStandardsReview,
+      strategicAmbition: d.strategicAmbition,
+      reportTypeRequested: d.reportTypeRequested
     },
     organizationalProfile: {
       executiveSponsorship: d.executiveSponsorship,
@@ -252,7 +291,6 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
   doc.setFont('helvetica', 'normal');
   doc.text(d.institutionType || 'N/A', m + 18, y);
 
-  // Overall readiness score card
   y += 15;
   const scoreColor = scores.overallReadiness >= 81 ? [34, 197, 94] : scores.overallReadiness >= 61 ? [251, 188, 4] : scores.overallReadiness >= 41 ? [234, 150, 50] : [234, 67, 53];
   doc.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2]);
@@ -264,7 +302,6 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
   doc.setFontSize(10);
   doc.text('OVERALL READINESS', m + 35, y + 30, { align: 'center' });
 
-  // 3-column scores
   const colX = m + 80;
   const colW = (pw - colX - m) / 3;
   [
@@ -285,7 +322,6 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
     doc.text(val, x + (colW - 4) / 2, y + 28, { align: 'center' });
   });
 
-  // Risk badge
   y += 50;
   const riskColors: Record<string, number[]> = { LOW: [34, 197, 94], MEDIUM: [251, 188, 4], HIGH: [234, 150, 50], CRITICAL: [234, 67, 53] };
   const rc = riskColors[scores.riskLevel] || [128, 128, 128];
@@ -299,7 +335,6 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
   doc.setFont('helvetica', 'normal');
   doc.text(`Recommended Pathway: ${pathway}`, m + 48, y + 8);
 
-  // Top 3 findings
   y += 22;
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
@@ -353,7 +388,6 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
 
   let tableEnd = (doc as any).lastAutoTable?.finalY || 120;
 
-  // Volume & corridors
   y = tableEnd + 12;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
@@ -395,7 +429,6 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
     });
   }
 
-  // Enhanced data mandate
   tableEnd = (doc as any).lastAutoTable?.finalY || y + 30;
   y = tableEnd + 10;
   if (y < ph - 40) {
@@ -410,7 +443,6 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
     doc.text(d.enhancedDataMandateReadiness || 'Not specified', m + 5, y);
   }
 
-  // Critical technical gaps
   y += 12;
   if (y < ph - 50) {
     const gaps: string[][] = [];
@@ -476,15 +508,16 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
   });
   tableEnd = (doc as any).lastAutoTable?.finalY || y + 50;
 
-  // CBDC flag
-  if (d.wholesaleCbdcStrategy) {
+  // DLT Strategy flag (replaces old CBDC flag)
+  const dltActive = d.dltStrategyMaturity && d.dltStrategyMaturity !== 'No interest currently';
+  if (dltActive) {
     y = tableEnd + 8;
     doc.setFillColor(240, 248, 255);
     doc.roundedRect(m, y, pw - 2 * m, 16, 3, 3, 'F');
     doc.setTextColor(59, 130, 246);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('Wholesale Settlement / CBDC Strategy Active', m + 8, y + 10);
+    doc.text(`DLT / Tokenized Settlement Strategy: ${d.dltStrategyMaturity}`, m + 8, y + 10);
     tableEnd = y + 20;
   }
 
@@ -546,7 +579,6 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
   doc.setFont('helvetica', 'bold');
   doc.text('Recommended Next Steps', pw / 2, 13, { align: 'center' });
 
-  // 5-phase timeline scaled to urgency
   const urgencyScale: Record<string, string[]> = {
     'Immediate (started)': ['Weeks 1-2', 'Weeks 3-4', 'Months 2-3', 'Months 3-4', 'Month 5'],
     'Standard (6-12 months)': ['Months 1-2', 'Months 3-4', 'Months 5-7', 'Months 8-9', 'Months 10-12'],

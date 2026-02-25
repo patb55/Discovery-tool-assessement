@@ -21,8 +21,15 @@ const INITIAL_FORM: DiscoveryFormData = {
   coreSystem: '', systemAge: '', swiftConnectivity: '', messagingFormats: [],
   isoSendCapable: '', isoReceiveCapable: '', extendedFieldsCapable: '',
   integrationComplexity: '', itTeamSize: '', blockchainExperience: false,
-  wholesaleCbdcStrategy: false, enhancedDataMandateReadiness: '', primaryComplianceMotivation: '',
+  dltStrategyMaturity: '', november2026Priority: '',
+  enhancedDataMandateReadiness: '', primaryComplianceMotivation: '',
   complianceBudget: '', urgency: '', targetGoLive: '', translationFeeTolerance: '', vendorSelectionStatus: '',
+  nostroRelationshipCount: '', nostroBalanceRange: '', costOfCapital: '',
+  monthlyPaymentRepairVolume: '', truncationRejections: '', capitalTreatmentAwareness: '', digitalAssetExposure: '',
+  institutionClassification: '', geographicFootprint: '', primaryCorridorRegions: [],
+  boardAwarenessLevel: '', peerBenchmarkConsent: false,
+  swiftTranslationOptInStatus: '', structuredAddressReadiness: '',
+  lastSwiftStandardsReview: '', strategicAmbition: '', reportTypeRequested: '',
   executiveSponsorship: '', dedicatedPM: '', changeManagement: '', testingEnvironment: '',
   rollbackCapability: '', staffTraining: '',
 };
@@ -47,12 +54,34 @@ const SPONSORSHIP = ['None', 'Awareness', 'Active support', 'Dedicated sponsor',
 const CHANGE_MGMT = ['None', 'Limited', 'Moderate', 'Strong'];
 const TRAINING = ['Not started', 'Planned', 'In progress', 'Complete'];
 
+const DLT_MATURITY = ['No interest currently', 'Monitoring developments', 'Actively evaluating', 'Pilot underway', 'Operational'];
+const NOV_2026_PRIORITY = ['Critical priority', 'On our radar', 'Not yet planned', 'Already addressed'];
+const NOSTRO_COUNTS = ['1-5', '6-15', '16-30', '30+'];
+const NOSTRO_BALANCES = ['Under €5M', '€5M-€20M', '€20M-€80M', '€80M-€200M', '€200M+', 'Prefer to discuss'];
+const COST_OF_CAPITAL = ['Below 3%', '3-5%', '5-8%', 'Above 8%', 'Use standard assumption (3%)'];
+const REPAIR_VOLUMES = ['None', 'Under 50', '50-200', '200-500', '500+'];
+const TRUNCATION_OPTIONS = ['Yes, regularly', 'Occasionally', 'Rarely or never', 'Unknown'];
+const CAPITAL_TREATMENT = ['Fully assessed', 'Partially assessed', 'Not yet assessed', 'Not applicable'];
+const DIGITAL_ASSET_EXPOSURE = ['None', 'Monitoring only', 'Pilot or exploring', 'Operational'];
+const INST_CLASSIFICATION = ['Commercial bank', 'Credit cooperative', 'Savings bank', 'Regional bank', 'Subsidiary of international group', 'Specialized institution'];
+const GEO_FOOTPRINT = ['Domestic only', 'Eurozone', 'Europe broad', 'Global'];
+const CORRIDOR_REGIONS = ['Eurozone', 'USD corridors', 'GBP corridors', 'CHF corridors', 'CNY corridors', 'Emerging markets', 'Other'];
+const BOARD_AWARENESS = ['Full awareness, active oversight', 'Partial awareness', 'Not yet formally raised', 'Prefer to discuss'];
+const SWIFT_OPT_IN = ['Opted in — currently paying fees', 'Opted out — native ISO 20022', 'Partial opt-out', 'Unknown or not assessed'];
+const ADDRESS_READINESS = ['Fully prepared', 'In progress', 'Planning phase', 'Not yet addressed'];
+const SWIFT_REVIEW = ['SR2025 (current)', 'SR2024', 'Earlier', 'Not formally reviewed'];
+const STRATEGIC_AMBITION = ['Compliance only', 'Compliance and optimization', 'Strategic transformation'];
+const REPORT_TYPE = ['Diagnostic Report', 'Full Assessment'];
+
 const STEP_TITLES = [
   'Institution Profile',
   'Transaction Profile',
   'Technical Infrastructure',
   'Strategic Orientation',
   'Budget & Timeline',
+  'Financial Impact',
+  'Market Context',
+  'Strategic Horizon',
   'Organizational Readiness'
 ];
 
@@ -66,7 +95,7 @@ const UnifiedDiscoveryTool = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [lastExport, setLastExport] = useState(0);
   const COOLDOWN_MS = 3000;
-  const TOTAL_STEPS = 6;
+  const TOTAL_STEPS = 9;
 
   const [isValidating, setIsValidating] = useState(false);
 
@@ -118,6 +147,13 @@ const UnifiedDiscoveryTool = () => {
       ? [...formData.messagingFormats, fmt]
       : formData.messagingFormats.filter(f => f !== fmt);
     update('messagingFormats', newFmts);
+  };
+
+  const handleCorridorRegionToggle = (region: string, checked: boolean) => {
+    const newRegions = checked
+      ? [...formData.primaryCorridorRegions, region]
+      : formData.primaryCorridorRegions.filter(r => r !== region);
+    update('primaryCorridorRegions', newRegions);
   };
 
   const addCorridor = () => {
@@ -313,7 +349,10 @@ const UnifiedDiscoveryTool = () => {
             {currentStep === 2 && <Step3 formData={formData} update={update} handleMsgFormatToggle={handleMsgFormatToggle} />}
             {currentStep === 3 && <Step4 formData={formData} update={update} />}
             {currentStep === 4 && <Step5 formData={formData} update={update} />}
-            {currentStep === 5 && <Step6 formData={formData} update={update} />}
+            {currentStep === 5 && <StepFinancialImpact formData={formData} update={update} />}
+            {currentStep === 6 && <StepMarketContext formData={formData} update={update} handleCorridorRegionToggle={handleCorridorRegionToggle} />}
+            {currentStep === 7 && <StepStrategicHorizon formData={formData} update={update} />}
+            {currentStep === 8 && <Step9OrgReadiness formData={formData} update={update} />}
           </div>
 
           {/* Navigation */}
@@ -516,16 +555,18 @@ const Step3 = ({ formData: d, update, handleMsgFormatToggle }: { formData: Disco
 const Step4 = ({ formData: d, update }: { formData: DiscoveryFormData; update: any }) => (
   <>
     <h2 className="text-xl font-bold text-foreground">Step 4: Strategic Orientation</h2>
-    <div>
-      <label className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg cursor-pointer hover:bg-secondary/50">
-        <input type="checkbox" checked={d.wholesaleCbdcStrategy} onChange={e => update('wholesaleCbdcStrategy', e.target.checked)}
-          className="h-4 w-4 rounded border-input text-primary focus:ring-ring" />
-        <div>
-          <span className="text-sm font-medium text-foreground">Wholesale Settlement or CBDC Strategy</span>
-          <p className="text-xs text-muted-foreground">Include tokenized central bank money platforms (e.g., Fnality) and institutional stablecoin settlement in the analysis</p>
-        </div>
-      </label>
-    </div>
+    <SelectField
+      label="DLT / Tokenized Settlement Strategy Maturity"
+      value={d.dltStrategyMaturity}
+      options={DLT_MATURITY}
+      onChange={v => update('dltStrategyMaturity', v)}
+    />
+    <SelectField
+      label="November 2026 Structured Address Deadline — Internal Priority"
+      value={d.november2026Priority}
+      options={NOV_2026_PRIORITY}
+      onChange={v => update('november2026Priority', v)}
+    />
     <RadioField label="Enhanced Data Mandate Readiness"
       helper="SWIFT's enhanced data mandate requires structured addresses by November 2026. This is separate from the November 2025 messaging format deadline."
       value={d.enhancedDataMandateReadiness}
@@ -566,9 +607,75 @@ const Step5 = ({ formData: d, update }: { formData: DiscoveryFormData; update: a
   </>
 );
 
-const Step6 = ({ formData: d, update }: { formData: DiscoveryFormData; update: any }) => (
+const StepFinancialImpact = ({ formData: d, update }: { formData: DiscoveryFormData; update: any }) => (
   <>
-    <h2 className="text-xl font-bold text-foreground">Step 6: Organizational Readiness</h2>
+    <h2 className="text-xl font-bold text-foreground">Step 6: Financial Impact Profile</h2>
+    <p className="text-sm text-muted-foreground -mt-4">Used to calculate your total cost of sub-optimal payment infrastructure beyond visible translation fees.</p>
+    <div className="grid md:grid-cols-2 gap-4">
+      <SelectField label="Active correspondent banking relationships" value={d.nostroRelationshipCount} options={NOSTRO_COUNTS} onChange={v => update('nostroRelationshipCount', v)} />
+      <SelectField label="Estimated total nostro balances (all corridors combined)" value={d.nostroBalanceRange} options={NOSTRO_BALANCES} onChange={v => update('nostroBalanceRange', v)}
+        helper="Approximate range only. Select 'Prefer to discuss' if you prefer to provide this verbally." />
+      <SelectField label="Internal hurdle rate / cost of capital" value={d.costOfCapital} options={COST_OF_CAPITAL} onChange={v => update('costOfCapital', v)}
+        helper="Used to calculate nostro pre-funding opportunity cost." />
+      <SelectField label="Monthly payment repairs due to data quality issues" value={d.monthlyPaymentRepairVolume} options={REPAIR_VOLUMES} onChange={v => update('monthlyPaymentRepairVolume', v)} />
+      <SelectField label="Truncation rejections from correspondent banks" value={d.truncationRejections} options={TRUNCATION_OPTIONS} onChange={v => update('truncationRejections', v)} />
+      <SelectField label="Basel III capital treatment assessment for current payment infrastructure" value={d.capitalTreatmentAwareness} options={CAPITAL_TREATMENT} onChange={v => update('capitalTreatmentAwareness', v)} />
+      <SelectField label="Current exposure to tokenized assets or digital currencies" value={d.digitalAssetExposure} options={DIGITAL_ASSET_EXPOSURE} onChange={v => update('digitalAssetExposure', v)} />
+    </div>
+  </>
+);
+
+const StepMarketContext = ({ formData: d, update, handleCorridorRegionToggle }: { formData: DiscoveryFormData; update: any; handleCorridorRegionToggle: (r: string, c: boolean) => void }) => (
+  <>
+    <h2 className="text-xl font-bold text-foreground">Step 7: Market Context Profile</h2>
+    <p className="text-sm text-muted-foreground -mt-4">Used for peer benchmarking against comparable institutions.</p>
+    <div className="grid md:grid-cols-2 gap-4">
+      <SelectField label="Institution type" value={d.institutionClassification} options={INST_CLASSIFICATION} onChange={v => update('institutionClassification', v)} />
+      <SelectField label="Primary market footprint" value={d.geographicFootprint} options={GEO_FOOTPRINT} onChange={v => update('geographicFootprint', v)} />
+    </div>
+    <div>
+      <FieldLabel label="Primary payment corridor regions" />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+        {CORRIDOR_REGIONS.map(r => (
+          <label key={r} className="flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer">
+            <input type="checkbox" checked={d.primaryCorridorRegions.includes(r)} onChange={e => handleCorridorRegionToggle(r, e.target.checked)}
+              className="h-4 w-4 rounded border-input text-primary focus:ring-ring" />
+            <span className="text-sm text-foreground">{r}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+    <SelectField label="Board-level awareness of post-deadline compliance status" value={d.boardAwarenessLevel} options={BOARD_AWARENESS} onChange={v => update('boardAwarenessLevel', v)} />
+    <div>
+      <label className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg cursor-pointer hover:bg-secondary/50">
+        <input type="checkbox" checked={d.peerBenchmarkConsent} onChange={e => update('peerBenchmarkConsent', e.target.checked)}
+          className="h-4 w-4 rounded border-input text-primary focus:ring-ring" />
+        <div>
+          <span className="text-sm font-medium text-foreground">Contribute anonymized data to industry benchmarking</span>
+          <p className="text-xs text-muted-foreground">Your institution is never identified. Anonymized data improves peer comparison accuracy in your report.</p>
+        </div>
+      </label>
+    </div>
+  </>
+);
+
+const StepStrategicHorizon = ({ formData: d, update }: { formData: DiscoveryFormData; update: any }) => (
+  <>
+    <h2 className="text-xl font-bold text-foreground">Step 8: Strategic Horizon</h2>
+    <p className="text-sm text-muted-foreground -mt-4">Identifies quick wins and future-readiness indicators.</p>
+    <SelectField label="Current SWIFT in-flow translation service status" value={d.swiftTranslationOptInStatus} options={SWIFT_OPT_IN} onChange={v => update('swiftTranslationOptInStatus', v)}
+      helper="Institutions still opted in are incurring €0.235 per transaction from January 2026." />
+    <SelectField label="November 2026 structured address mandate readiness" value={d.structuredAddressReadiness} options={ADDRESS_READINESS} onChange={v => update('structuredAddressReadiness', v)} />
+    <SelectField label="Last SWIFT standards release formally reviewed" value={d.lastSwiftStandardsReview} options={SWIFT_REVIEW} onChange={v => update('lastSwiftStandardsReview', v)} />
+    <SelectField label="Primary strategic ambition for payment infrastructure" value={d.strategicAmbition} options={STRATEGIC_AMBITION} onChange={v => update('strategicAmbition', v)} />
+    <SelectField label="Assessment scope requested" value={d.reportTypeRequested} options={REPORT_TYPE} onChange={v => update('reportTypeRequested', v)}
+      helper="Diagnostic: current state, cost exposure, quick wins. Full Assessment: complete pathway analysis, vendor selection, roadmap." />
+  </>
+);
+
+const Step9OrgReadiness = ({ formData: d, update }: { formData: DiscoveryFormData; update: any }) => (
+  <>
+    <h2 className="text-xl font-bold text-foreground">Step 9: Organizational Readiness</h2>
     <div className="grid md:grid-cols-2 gap-4">
       <SelectField label="Executive Sponsorship Level" value={d.executiveSponsorship} options={SPONSORSHIP} onChange={v => update('executiveSponsorship', v)} />
       <RadioField label="Dedicated Project Manager Assigned" value={d.dedicatedPM} options={['Yes', 'No']} onChange={v => update('dedicatedPM', v)} />
