@@ -17,7 +17,7 @@ const INITIAL_FORM: DiscoveryFormData = {
   regions: [], isGlobal: false,
   monthlyVolume: 0, annualGrowthRate: 0, crossBorderPercent: 0,
   corridors: [{ currencyPair: '', monthlyVolume: 0 }],
-  currencyCount: 0, reconciliationComplexity: '',
+  currencyCount: 0, messageDistribution: { mt103: 0, mt202: 0, mt900: 0, mt910: 0, other: 0 }, reconciliationComplexity: '',
   coreSystem: '', systemAge: '', swiftConnectivity: '', messagingFormats: [],
   isoSendCapable: '', isoReceiveCapable: '', extendedFieldsCapable: '',
   integrationComplexity: '', itTeamSize: '', blockchainExperience: false,
@@ -165,6 +165,11 @@ const UnifiedDiscoveryTool = () => {
     const now = Date.now();
     if (isExporting || now - lastExport < COOLDOWN_MS) {
       toast({ title: 'Please wait', description: 'Wait 3 seconds between exports' });
+      return;
+    }
+    const distTotal = formData.messageDistribution.mt103 + formData.messageDistribution.mt202 + formData.messageDistribution.mt900 + formData.messageDistribution.mt910 + formData.messageDistribution.other;
+    if (distTotal !== 100) {
+      toast({ title: 'Validation Error', description: 'Message Type Distribution percentages must total 100% before export.', variant: 'destructive' });
       return;
     }
     setIsExporting(true);
@@ -541,6 +546,48 @@ const Step2 = ({ formData: d, update }: { formData: DiscoveryFormData; update: a
             className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring" />
         </div>
       </div>
+
+      {/* Message Type Distribution */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-1">Message Type Distribution</h3>
+        <p className="text-xs text-muted-foreground mb-3">Percentage breakdown of monthly message volume (must total 100%)</p>
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            { key: 'mt103' as const, label: 'MT103 — Customer Credit Transfers' },
+            { key: 'mt202' as const, label: 'MT202 — Financial Institution Transfers' },
+            { key: 'mt900' as const, label: 'MT900 — Debit Confirmations' },
+            { key: 'mt910' as const, label: 'MT910 — Credit Confirmations' },
+            { key: 'other' as const, label: 'Other message types' },
+          ]).map(({ key, label }, idx, arr) => (
+            <div key={key} className={idx === arr.length - 1 ? 'col-span-2 max-w-[calc(50%-0.375rem)]' : ''}>
+              <label className="block text-sm text-foreground mb-1">{label}</label>
+              <div className="flex items-center gap-1">
+                <input type="number" min={0} max={100} step={1}
+                  value={d.messageDistribution[key] || ''}
+                  onChange={e => {
+                    const val = Math.max(0, Math.min(100, Math.floor(Number(e.target.value) || 0)));
+                    update('messageDistribution', { ...d.messageDistribution, [key]: val });
+                  }}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
+                  placeholder="0" />
+                <span className="text-sm font-medium text-muted-foreground">%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        {(() => {
+          const total = d.messageDistribution.mt103 + d.messageDistribution.mt202 + d.messageDistribution.mt900 + d.messageDistribution.mt910 + d.messageDistribution.other;
+          const isValid = total === 100;
+          return (
+            <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${isValid ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+              {!isValid && <AlertCircle className="w-4 h-4" />}
+              Total: {total}%
+              {!isValid && <span className="font-normal text-xs ml-1">— Percentages must total 100% before export</span>}
+            </div>
+          );
+        })()}
+      </div>
+
       <SelectField label="Reconciliation Complexity" value={d.reconciliationComplexity} options={RECON_COMPLEXITY} onChange={v => update('reconciliationComplexity', v)} />
 
       {/* PART 1 — Pre-populated corridor grid */}
