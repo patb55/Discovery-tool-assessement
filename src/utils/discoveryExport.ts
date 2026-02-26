@@ -16,6 +16,7 @@ export interface DiscoveryFormData {
   crossBorderPercent: number;
   corridors: { currencyPair: string; monthlyVolume: number }[];
   currencyCount: number;
+  messageDistribution: { mt103: number; mt202: number; mt900: number; mt910: number; other: number };
   reconciliationComplexity: string;
   // Step 3
   coreSystem: string;
@@ -168,6 +169,7 @@ export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
       crossBorderPercent: d.crossBorderPercent,
       corridors: d.corridors.filter(c => c.currencyPair),
       currencyCount: d.currencyCount,
+      messageDistribution: d.messageDistribution,
       reconciliationComplexity: d.reconciliationComplexity
     },
     technicalProfile: {
