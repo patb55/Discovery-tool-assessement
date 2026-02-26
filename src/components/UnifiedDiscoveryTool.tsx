@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson, Info, Plus, Trash2, Calendar } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson, Info, Plus, Trash2, Calendar, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateDiscoveryPDF, generateDiscoveryJSON, calculateScores, type DiscoveryFormData, type DiscoveryScores } from '@/utils/discoveryExport';
 import { supabase } from '@/integrations/supabase/client';
@@ -94,6 +94,8 @@ const UnifiedDiscoveryTool = () => {
   const [formData, setFormData] = useState<DiscoveryFormData>({ ...INITIAL_FORM });
   const [isExporting, setIsExporting] = useState(false);
   const [lastExport, setLastExport] = useState(0);
+  const [corridorVersion, setCorridorVersion] = useState(0);
+  const importRef = useRef<HTMLInputElement>(null);
   const COOLDOWN_MS = 3000;
   const TOTAL_STEPS = 9;
 
@@ -160,6 +162,118 @@ const UnifiedDiscoveryTool = () => {
 
   const nextStep = () => { if (currentStep < TOTAL_STEPS) setCurrentStep(currentStep + 1); };
   const prevStep = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (importRef.current) importRef.current.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const json = JSON.parse(ev.target?.result as string);
+        if (json.assessmentType !== 'unified-discovery-v1') {
+          toast({ title: 'Invalid file', description: 'Must be a unified Discovery assessment JSON', variant: 'destructive' });
+          return;
+        }
+        const ip = json.institutionProfile || {};
+        const tp = json.transactionProfile || {};
+        const tech = json.technicalProfile || {};
+        const sp = json.strategicProfile || {};
+        const bp = json.budgetProfile || {};
+        const fip = json.financialImpactProfile || {};
+        const mcp = json.marketContextProfile || {};
+        const shp = json.strategicHorizonProfile || {};
+        const op = json.organizationalProfile || {};
+
+        const safeStr = (v: any, fallback = '') => typeof v === 'string' ? v : fallback;
+        const safeNum = (v: any, fallback = 0) => typeof v === 'number' ? v : fallback;
+        const safeBool = (v: any, fallback = false) => typeof v === 'boolean' ? v : fallback;
+        const safeArr = (v: any, fallback: any[] = []) => Array.isArray(v) ? v : fallback;
+
+        const imported: DiscoveryFormData = {
+          ...INITIAL_FORM,
+          // institutionProfile
+          institutionName: safeStr(ip.name),
+          institutionType: safeStr(ip.type),
+          totalAssets: safeStr(ip.assetSize),
+          countriesOfOperation: safeNum(ip.countries),
+          regions: safeArr(ip.regions),
+          isGlobal: safeBool(ip.isGlobal),
+          // transactionProfile
+          monthlyVolume: safeNum(tp.monthlyVolume),
+          annualGrowthRate: safeNum(tp.annualGrowthRate),
+          crossBorderPercent: safeNum(tp.crossBorderPercent),
+          corridors: safeArr(tp.corridors, [{ currencyPair: '', monthlyVolume: 0 }]),
+          currencyCount: safeNum(tp.currencyCount),
+          messageDistribution: tp.messageDistribution ? {
+            mt103: safeNum(tp.messageDistribution.mt103),
+            mt202: safeNum(tp.messageDistribution.mt202),
+            mt900: safeNum(tp.messageDistribution.mt900),
+            mt910: safeNum(tp.messageDistribution.mt910),
+            other: safeNum(tp.messageDistribution.other),
+          } : { ...INITIAL_FORM.messageDistribution },
+          reconciliationComplexity: safeStr(tp.reconciliationComplexity),
+          // technicalProfile
+          coreSystem: safeStr(tech.coreSystem),
+          systemAge: safeStr(tech.systemAge),
+          swiftConnectivity: safeStr(tech.swiftConnectivity),
+          messagingFormats: safeArr(tech.messagingFormats),
+          isoSendCapable: safeStr(tech.isoSendCapable),
+          isoReceiveCapable: safeStr(tech.isoReceiveCapable),
+          extendedFieldsCapable: safeStr(tech.extendedFieldsCapable),
+          integrationComplexity: safeStr(tech.integrationComplexity),
+          itTeamSize: safeStr(tech.itTeamSize),
+          blockchainExperience: safeBool(tech.blockchainExperience),
+          // strategicProfile
+          dltStrategyMaturity: safeStr(sp.dltStrategyMaturity),
+          november2026Priority: safeStr(sp.november2026Priority),
+          enhancedDataMandateReadiness: safeStr(sp.enhancedDataMandateReadiness),
+          primaryComplianceMotivation: safeStr(sp.primaryComplianceMotivation),
+          // budgetProfile
+          complianceBudget: safeStr(bp.complianceBudget),
+          urgency: safeStr(bp.urgency),
+          targetGoLive: safeStr(bp.targetGoLive),
+          translationFeeTolerance: safeStr(bp.translationFeeTolerance),
+          vendorSelectionStatus: safeStr(bp.vendorSelectionStatus),
+          // financialImpactProfile
+          nostroRelationshipCount: safeStr(fip.nostroRelationshipCount),
+          nostroBalanceRange: safeStr(fip.nostroBalanceRange),
+          costOfCapital: safeStr(fip.costOfCapital),
+          monthlyPaymentRepairVolume: safeStr(fip.monthlyPaymentRepairVolume),
+          truncationRejections: safeStr(fip.truncationRejections),
+          capitalTreatmentAwareness: safeStr(fip.capitalTreatmentAwareness),
+          digitalAssetExposure: safeStr(fip.digitalAssetExposure),
+          // marketContextProfile
+          institutionClassification: safeStr(mcp.institutionClassification),
+          geographicFootprint: safeStr(mcp.geographicFootprint),
+          primaryCorridorRegions: safeArr(mcp.primaryCorridorRegions),
+          boardAwarenessLevel: safeStr(mcp.boardAwarenessLevel),
+          peerBenchmarkConsent: safeBool(mcp.peerBenchmarkConsent),
+          // strategicHorizonProfile
+          swiftTranslationOptInStatus: safeStr(shp.swiftTranslationOptInStatus),
+          structuredAddressReadiness: safeStr(shp.structuredAddressReadiness),
+          lastSwiftStandardsReview: safeStr(shp.lastSwiftStandardsReview),
+          strategicAmbition: safeStr(shp.strategicAmbition),
+          reportTypeRequested: safeStr(shp.reportTypeRequested),
+          // organizationalProfile
+          executiveSponsorship: safeStr(op.executiveSponsorship),
+          dedicatedPM: safeStr(op.dedicatedPM),
+          changeManagement: safeStr(op.changeManagement),
+          testingEnvironment: safeStr(op.testingEnvironment),
+          rollbackCapability: safeStr(op.rollbackCapability),
+          staffTraining: safeStr(op.staffTraining),
+        };
+
+        setFormData(imported);
+        setCorridorVersion(v => v + 1);
+        setCurrentStep(0);
+        toast({ title: 'Assessment imported', description: `${imported.institutionName || 'Unknown institution'}. Review and update fields as needed.` });
+      } catch {
+        toast({ title: 'Invalid file', description: 'Could not parse JSON file', variant: 'destructive' });
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const handleGenerateReport = () => {
     const now = Date.now();
@@ -309,7 +423,14 @@ const UnifiedDiscoveryTool = () => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex-1">
               <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-1">ISO 20022 Unified Discovery</h1>
-              <p className="text-muted-foreground text-sm">Comprehensive Readiness Assessment</p>
+              <div className="flex items-center gap-3">
+                <p className="text-muted-foreground text-sm">Comprehensive Readiness Assessment</p>
+                <input ref={importRef} type="file" accept=".json" onChange={handleImportFile} className="hidden" />
+                <button onClick={() => importRef.current?.click()}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground border border-input bg-background px-2.5 py-1 rounded-md hover:bg-accent transition">
+                  <Upload className="w-3 h-3" /> Import Previous Assessment (JSON)
+                </button>
+              </div>
             </div>
             <img src={logo} alt="PBC Logo" className="h-14 md:h-16" />
           </div>
@@ -336,7 +457,7 @@ const UnifiedDiscoveryTool = () => {
           {/* Step content */}
           <div className="space-y-6 mb-8">
             {currentStep === 0 && <Step1 formData={formData} update={update} handleRegionToggle={handleRegionToggle} />}
-            {currentStep === 1 && <Step2 formData={formData} update={update} />}
+            {currentStep === 1 && <Step2 key={corridorVersion} formData={formData} update={update} />}
             {currentStep === 2 && <Step3 formData={formData} update={update} handleMsgFormatToggle={handleMsgFormatToggle} />}
             {currentStep === 3 && <Step4 formData={formData} update={update} />}
             {currentStep === 4 && <Step5 formData={formData} update={update} />}
