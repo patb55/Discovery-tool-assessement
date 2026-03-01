@@ -171,8 +171,9 @@ const UnifiedDiscoveryTool = () => {
     reader.onload = (ev) => {
       try {
         const json = JSON.parse(ev.target?.result as string);
-        if (json.assessmentType !== 'unified-discovery-v1') {
-          toast({ title: 'Invalid file', description: 'Must be a unified Discovery assessment JSON', variant: 'destructive' });
+        const assessmentType = json.assessmentType || json.version;
+        if (assessmentType !== 'unified-discovery-v1') {
+          toast({ title: 'Invalid file', description: 'Must be a unified Discovery assessment JSON (assessmentType: unified-discovery-v1)', variant: 'destructive' });
           return;
         }
         const ip = json.institutionProfile || {};
@@ -270,8 +271,9 @@ const UnifiedDiscoveryTool = () => {
         setCorridorVersion(v => v + 1);
         setCurrentStep(0);
         toast({ title: 'Assessment imported', description: `${imported.institutionName || 'Unknown institution'}. Review and update fields as needed.` });
-      } catch {
-        toast({ title: 'Invalid file', description: 'Could not parse JSON file', variant: 'destructive' });
+      } catch (err: any) {
+        console.error('Import error:', err);
+        toast({ title: 'Invalid file', description: err?.message || 'Could not parse JSON file', variant: 'destructive' });
       }
     };
     reader.readAsText(file);
