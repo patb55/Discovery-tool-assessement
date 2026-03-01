@@ -1,0 +1,142 @@
+{
+  "version": "unified-discovery-v1",
+  "timestamp": "2026-03-01T16:30:00Z",
+  "institutionProfile": {
+    "institutionName": "Banque Régionale de Bretagne",
+    "institutionType": "Commercial Bank",
+    "totalAssets": "€1B-€10B",
+    "countriesOfOperation": 3,
+    "regions": ["Europe"],
+    "isGlobal": false,
+    "bankingRelationships": [
+      "BNP Paribas",
+      "Société Générale",
+      "Deutsche Bank"
+    ],
+    "otherBankingRelationships": null
+  },
+  "transactionProfile": {
+    "monthlyVolume": 77000000,
+    "annualGrowthRate": "10-20%",
+    "crossBorderPercentage": 85,
+    "currenciesHandled": 8,
+    "messageTypeDistribution": {
+      "mt103": 45,
+      "mt202": 30,
+      "mt900": 15,
+      "mt910": 10,
+      "other": 0
+    },
+    "reconciliationComplexity": "Moderate",
+    "corridors": [
+      {
+        "currencyPair": "EUR-GBP",
+        "monthlyVolume": 45000000,
+        "volumeShare": 60,
+        "enabled": true
+      },
+      {
+        "currencyPair": "EUR-CHF",
+        "monthlyVolume": 20000000,
+        "volumeShare": 25,
+        "enabled": true
+      },
+      {
+        "currencyPair": "EUR-USD",
+        "monthlyVolume": 12000000,
+        "volumeShare": 15,
+        "enabled": true
+      }
+    ]
+  },
+  "technicalInfrastructure": {
+    "coreBankingSystem": "Temenos T24",
+    "systemAge": "5-10 years",
+    "swiftConnectivity": "Alliance Lite2",
+    "integrationComplexity": "Moderate",
+    "itTeamSize": "10-25 dedicated",
+    "messagingFormat": {
+      "mt": true,
+      "iso20022": true,
+      "proprietary": false,
+      "multiple": true
+    },
+    "iso20022SendCapability": "Partial",
+    "iso20022ReceiveCapability": "Partial",
+    "extendedDataCapability": "Limited"
+  },
+  "strategicOrientation": {
+    "primaryMotivation": "Cost reduction through lower transaction fees",
+    "wholesaleCbdcStrategy": true,
+    "preferredVendors": [],
+    "riskTolerance": "Moderate",
+    "dltMaturity": "Exploring / Learning",
+    "nov2026StructuredAddressPriority": "Planning phase",
+    "enhancedDataReadiness": "Aware but not yet started planning"
+  },
+  "budgetTimeline": {
+    "complianceBudget": "€100K-€500K",
+    "implementationUrgency": "Standard (6-12 months)",
+    "targetGoLiveDate": null,
+    "translationFeeTolerance": "€5K-€20K per month",
+    "vendorSelectionStatus": "Evaluating options"
+  },
+  "financialImpact": {
+    "currentMonthlySwiftCosts": 25000,
+    "expectedCostSavingsTarget": "20-40%",
+    "acceptablePaybackPeriod": "2-3 years",
+    "budgetApprovalStatus": "Budget allocated",
+    "costSensitivity": "High - cost reduction is primary driver"
+  },
+  "marketContext": {
+    "competitorPressure": "Moderate - some peers migrating",
+    "customerDemandForSpeed": "High - instant payments expected",
+    "regulatoryPressureLevel": "High - facing compliance deadlines",
+    "marketPosition": "Regional leader in target markets",
+    "differentiationStrategy": "Customer service and regional expertise"
+  },
+  "strategicHorizon": {
+    "fiveYearVision": "Digital-first regional bank with instant cross-border payments",
+    "anticipatedVolumeGrowth": "50-100%",
+    "plannedMarketExpansion": "Limited - focus on deepening existing markets",
+    "technologyRoadmap": "Cloud migration + API platform",
+    "partnershipStrategy": "Selective - prefer proven regional partners"
+  },
+  "organizationalReadiness": {
+    "executiveSupport": "Strong - Board approved",
+    "changeManagementCapability": "Moderate - dedicated team",
+    "staffTrainingNeeds": "Significant - new platform requires upskilling",
+    "operationalImpactTolerance": "Low - cannot disrupt daily operations",
+    "projectGovernance": "Established - dedicated PMO",
+    "externalConsultingNeeds": "Limited - prefer vendor-provided support"
+  },
+  "readinessAssessment": {
+    "currentSystemAge": "5-10 years",
+    "iso20022Readiness": "Partially compliant (message translation active)",
+    "infrastructureFlexibility": "Moderate - can integrate new systems with IT support",
+    "regulatoryPressure": "High - facing compliance deadlines",
+    "overallReadinessScore": 68,
+    "readinessTier": "MEDIUM"
+  },
+  "technicalRequirements": {
+    "apiIntegrationCapability": "Yes - experienced development team",
+    "realTimeSettlementNeeded": "Yes - customer expectations require instant settlement",
+    "multiCurrencySupport": "Yes - serve cross-border clients",
+    "existingSwiftInfrastructure": "Yes - current primary messaging system",
+    "technicalReadinessScore": 72,
+    "technicalTier": "MEDIUM"
+  },
+  "totalMonthlyVolume": 77000000,
+  "strategicPreferences": {
+    "primaryMotivation": "Cost reduction through lower transaction fees",
+    "wholesaleCbdcStrategy": true,
+    "preferredVendors": [],
+    "riskTolerance": "Moderate - willing to adopt proven new technology"
+  },
+  "translationCostAnalysis": {
+    "monthlyMessages": 77000,
+    "translationFeePerMessage": 0.235,
+    "monthlyTranslationCost": 18095,
+    "annualTranslationCost": 217140
+  }
+}

@@ -44,20 +44,20 @@ const MSG_FORMATS = ['MT (legacy SWIFT)', 'ISO 20022 (MX)', 'Proprietary format'
 const YES_NO_IP = ['Yes', 'No', 'In progress'];
 const YES_NO_PARTIAL = ['Yes', 'No', 'Partial'];
 const COMPLEXITY = ['Low', 'Medium', 'High', 'Very High'];
-const TEAM_SIZES = ['0', '1-2', '3-5', '6-10', '10+'];
+const TEAM_SIZES = ['0', '1-2', '3-5', '6-9', '10-25', '26+'];
 const RECON_COMPLEXITY = ['Simple', 'Moderate', 'Complex', 'Very Complex'];
 const BUDGETS = ['Under €100K', '€100K-€500K', '€500K-€1M', '€1M-€5M', 'Over €5M'];
 const URGENCIES = ['Immediate (started)', 'Standard (6-12 months)', 'Planned (12-18 months)', 'Flexible (18+ months)'];
 const FEE_TOLERANCE = ['Under €1,000', '€1,000-€5,000', '€5,000-€20,000', 'Over €20,000', 'Unknown'];
 const VENDOR_STATUS = ['Not started', 'Evaluating options', 'Shortlisted vendors', 'Selected', 'Contracted'];
-const SPONSORSHIP = ['None', 'Awareness', 'Active support', 'Dedicated sponsor', 'C-suite champion'];
+const SPONSORSHIP = ['No sponsorship', 'Awareness', 'Active support', 'Strong commitment', 'C-level champion', 'C-suite champion'];
 const CHANGE_MGMT = ['None', 'Limited', 'Moderate', 'Strong'];
 const TRAINING = ['Not started', 'Planned', 'In progress', 'Complete'];
 
-const DLT_MATURITY = ['No interest currently', 'Monitoring developments', 'Actively evaluating', 'Pilot underway', 'Operational'];
-const NOV_2026_PRIORITY = ['Critical priority', 'On our radar', 'Not yet planned', 'Already addressed'];
+const DLT_MATURITY = ['Not exploring', 'Monitoring developments', 'Exploring / Learning', 'Actively evaluating', 'Active pilot / POC', 'Production deployment'];
+const NOV_2026_PRIORITY = ['Critical priority', 'Active planning', 'On our radar', 'Not yet planned', 'Compliant'];
 const NOSTRO_COUNTS = ['1-5', '6-15', '16-30', '30+'];
-const NOSTRO_BALANCES = ['Under €5M', '€5M-€20M', '€20M-€80M', '€80M-€200M', '€200M+', 'Prefer to discuss'];
+const NOSTRO_BALANCES = ['Under €1M', '€1M-€10M', '€10M-€50M', '€50M-€200M', '€200M+', 'Prefer to discuss'];
 const COST_OF_CAPITAL = ['Below 3%', '3-5%', '5-8%', 'Above 8%', 'Use standard assumption (3%)'];
 const REPAIR_VOLUMES = ['None', 'Under 50', '50-200', '200-500', '500+'];
 const TRUNCATION_OPTIONS = ['Yes, regularly', 'Occasionally', 'Rarely or never', 'Unknown'];
@@ -66,12 +66,28 @@ const DIGITAL_ASSET_EXPOSURE = ['None', 'Monitoring only', 'Pilot or exploring',
 const INST_CLASSIFICATION = ['Commercial bank', 'Credit cooperative', 'Savings bank', 'Regional bank', 'Subsidiary of international group', 'Specialized institution'];
 const GEO_FOOTPRINT = ['Domestic only', 'Eurozone', 'Europe broad', 'Global'];
 const CORRIDOR_REGIONS = ['Eurozone', 'USD corridors', 'GBP corridors', 'CHF corridors', 'CNY corridors', 'Emerging markets', 'Other'];
-const BOARD_AWARENESS = ['Full awareness, active oversight', 'Partial awareness', 'Not yet formally raised', 'Prefer to discuss'];
-const SWIFT_OPT_IN = ['Opted in — currently paying fees', 'Opted out — native ISO 20022', 'Partial opt-out', 'Unknown or not assessed'];
+const BOARD_AWARENESS = ['No awareness', 'Awareness', 'Partial awareness', 'Moderate awareness', 'Full awareness and active engagement'];
+const SWIFT_OPT_IN = ['Opted in', 'Opted in — currently paying fees', 'Opted out (native ISO 20022)', 'Opted out — native ISO 20022', 'Unknown or not assessed'];
 const ADDRESS_READINESS = ['Fully prepared', 'In progress', 'Planning phase', 'Not yet addressed'];
 const SWIFT_REVIEW = ['SR2025 (current)', 'SR2024', 'Earlier', 'Not formally reviewed'];
 const STRATEGIC_AMBITION = ['Compliance only', 'Compliance and optimization', 'Strategic transformation'];
 const REPORT_TYPE = ['Diagnostic Report', 'Full Assessment'];
+
+const ENHANCED_DATA_READINESS = [
+  'Not aware of structured address / enhanced data requirements',
+  'Aware but not yet started planning',
+  'Planning phase — mapping data fields and assessing data quality',
+  'Ready for November 2026 structured address deadline'
+];
+
+const PRIMARY_COMPLIANCE_MOTIVATION = [
+  'Regulatory obligation (must comply)',
+  'Cost reduction (translation fees)',
+  'Cost reduction through lower transaction fees',
+  'Competitive positioning',
+  'Client demand',
+  'All of the above'
+];
 
 const STEP_TITLES = [
   'Institution Profile',
@@ -238,68 +254,68 @@ const UnifiedDiscoveryTool = () => {
             mt910: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt910),
             other: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.other),
           } : { ...INITIAL_FORM.messageDistribution },
-          reconciliationComplexity: safeStr(tp.reconciliationComplexity),
+          reconciliationComplexity: matchOption(safeStr(tp.reconciliationComplexity), RECON_COMPLEXITY),
           // technicalProfile (support technicalInfrastructure keys)
-          coreSystem: safeStr(tech.coreSystem || tech.coreBankingSystem),
-          systemAge: safeStr(tech.systemAge || tech.currentSystemAge || ra.currentSystemAge),
-          swiftConnectivity: safeStr(tech.swiftConnectivity || tech.existingSwiftInfrastructure || tr.existingSwiftInfrastructure),
+          coreSystem: matchOption(safeStr(tech.coreSystem || tech.coreBankingSystem), CORE_SYSTEMS),
+          systemAge: matchOption(safeStr(tech.systemAge || tech.currentSystemAge || ra.currentSystemAge), SYSTEM_AGES),
+          swiftConnectivity: matchOption(safeStr(tech.swiftConnectivity || tech.existingSwiftInfrastructure || tr.existingSwiftInfrastructure), SWIFT_OPTIONS),
           messagingFormats: (() => {
             if (Array.isArray(tech.messagingFormats) && tech.messagingFormats.length) return tech.messagingFormats;
             const mf = tech.messagingFormat;
             if (mf && typeof mf === 'object') {
               const fmts: string[] = [];
-              if (mf.mt) fmts.push('MT');
-              if (mf.iso20022) fmts.push('ISO 20022');
-              if (mf.proprietary) fmts.push('Proprietary');
-              if (mf.multiple) fmts.push('Multiple');
+              if (mf.mt) fmts.push('MT (legacy SWIFT)');
+              if (mf.iso20022) fmts.push('ISO 20022 (MX)');
+              if (mf.proprietary) fmts.push('Proprietary format');
+              if (mf.multiple) fmts.push('Multiple formats');
               return fmts;
             }
             return [];
           })(),
-          isoSendCapable: safeStr(tech.isoSendCapable || tech.iso20022SendCapability),
-          isoReceiveCapable: safeStr(tech.isoReceiveCapable || tech.iso20022ReceiveCapability),
-          extendedFieldsCapable: safeStr(tech.extendedFieldsCapable || tech.extendedDataCapability),
-          integrationComplexity: safeStr(tech.integrationComplexity),
-          itTeamSize: safeStr(tech.itTeamSize),
+          isoSendCapable: matchOption(safeStr(tech.isoSendCapable || tech.iso20022SendCapability), [...YES_NO_IP, 'Partial']),
+          isoReceiveCapable: matchOption(safeStr(tech.isoReceiveCapable || tech.iso20022ReceiveCapability), [...YES_NO_IP, 'Partial']),
+          extendedFieldsCapable: matchOption(safeStr(tech.extendedFieldsCapable || tech.extendedDataCapability), YES_NO_PARTIAL),
+          integrationComplexity: matchOption(safeStr(tech.integrationComplexity), COMPLEXITY),
+          itTeamSize: matchOption(safeStr(tech.itTeamSize), TEAM_SIZES),
           blockchainExperience: safeBool(tech.blockchainExperience),
           // strategicProfile (support strategicOrientation keys)
-          dltStrategyMaturity: safeStr(sp.dltStrategyMaturity || sp.dltMaturity),
-          november2026Priority: safeStr(sp.november2026Priority || sp.nov2026StructuredAddressPriority),
-          enhancedDataMandateReadiness: safeStr(sp.enhancedDataMandateReadiness || sp.enhancedDataReadiness),
-          primaryComplianceMotivation: safeStr(sp.primaryComplianceMotivation || sp.primaryMotivation || spLegacy.primaryMotivation),
+          dltStrategyMaturity: matchOption(safeStr(sp.dltStrategyMaturity || sp.dltMaturity), DLT_MATURITY),
+          november2026Priority: matchOption(safeStr(sp.november2026Priority || sp.nov2026StructuredAddressPriority), NOV_2026_PRIORITY),
+          enhancedDataMandateReadiness: matchOption(safeStr(sp.enhancedDataMandateReadiness || sp.enhancedDataReadiness), ENHANCED_DATA_READINESS),
+          primaryComplianceMotivation: matchOption(safeStr(sp.primaryComplianceMotivation || sp.primaryMotivation || spLegacy.primaryMotivation), PRIMARY_COMPLIANCE_MOTIVATION),
           // budgetProfile (support budgetTimeline keys)
-          complianceBudget: safeStr(bp.complianceBudget),
-          urgency: safeStr(bp.urgency || bp.implementationUrgency),
+          complianceBudget: matchOption(safeStr(bp.complianceBudget), BUDGETS),
+          urgency: matchOption(safeStr(bp.urgency || bp.implementationUrgency), URGENCIES),
           targetGoLive: safeStr(bp.targetGoLive || bp.targetGoLiveDate || ''),
-          translationFeeTolerance: safeStr(bp.translationFeeTolerance),
-          vendorSelectionStatus: safeStr(bp.vendorSelectionStatus),
+          translationFeeTolerance: matchOption(safeStr(bp.translationFeeTolerance), FEE_TOLERANCE),
+          vendorSelectionStatus: matchOption(safeStr(bp.vendorSelectionStatus), VENDOR_STATUS),
           // financialImpactProfile (support financialImpact keys)
-          nostroRelationshipCount: safeStr(fip.nostroRelationshipCount),
-          nostroBalanceRange: safeStr(fip.nostroBalanceRange),
-          costOfCapital: safeStr(fip.costOfCapital || fip.costSensitivity),
-          monthlyPaymentRepairVolume: safeStr(fip.monthlyPaymentRepairVolume),
-          truncationRejections: safeStr(fip.truncationRejections),
-          capitalTreatmentAwareness: safeStr(fip.capitalTreatmentAwareness || fip.budgetApprovalStatus),
-          digitalAssetExposure: safeStr(fip.digitalAssetExposure),
+          nostroRelationshipCount: matchOption(safeStr(fip.nostroRelationshipCount), NOSTRO_COUNTS),
+          nostroBalanceRange: matchOption(safeStr(fip.nostroBalanceRange), NOSTRO_BALANCES),
+          costOfCapital: matchOption(safeStr(fip.costOfCapital || fip.costSensitivity), COST_OF_CAPITAL),
+          monthlyPaymentRepairVolume: matchOption(safeStr(fip.monthlyPaymentRepairVolume), REPAIR_VOLUMES),
+          truncationRejections: matchOption(safeStr(fip.truncationRejections), TRUNCATION_OPTIONS),
+          capitalTreatmentAwareness: matchOption(safeStr(fip.capitalTreatmentAwareness || fip.budgetApprovalStatus), CAPITAL_TREATMENT),
+          digitalAssetExposure: matchOption(safeStr(fip.digitalAssetExposure), DIGITAL_ASSET_EXPOSURE),
           // marketContextProfile (support marketContext keys)
-          institutionClassification: safeStr(mcp.institutionClassification || mcp.marketPosition),
-          geographicFootprint: safeStr(mcp.geographicFootprint || mcp.differentiationStrategy),
+          institutionClassification: matchOption(safeStr(mcp.institutionClassification || mcp.marketPosition), INST_CLASSIFICATION),
+          geographicFootprint: matchOption(safeStr(mcp.geographicFootprint || mcp.differentiationStrategy), GEO_FOOTPRINT),
           primaryCorridorRegions: safeArr(mcp.primaryCorridorRegions),
-          boardAwarenessLevel: safeStr(mcp.boardAwarenessLevel || mcp.regulatoryPressureLevel),
+          boardAwarenessLevel: matchOption(safeStr(mcp.boardAwarenessLevel || mcp.regulatoryPressureLevel), BOARD_AWARENESS),
           peerBenchmarkConsent: safeBool(mcp.peerBenchmarkConsent),
           // strategicHorizonProfile (support strategicHorizon keys)
-          swiftTranslationOptInStatus: safeStr(shp.swiftTranslationOptInStatus),
-          structuredAddressReadiness: safeStr(shp.structuredAddressReadiness),
-          lastSwiftStandardsReview: safeStr(shp.lastSwiftStandardsReview || shp.technologyRoadmap),
-          strategicAmbition: safeStr(shp.strategicAmbition || shp.fiveYearVision),
-          reportTypeRequested: safeStr(shp.reportTypeRequested),
+          swiftTranslationOptInStatus: matchOption(safeStr(shp.swiftTranslationOptInStatus), SWIFT_OPT_IN),
+          structuredAddressReadiness: matchOption(safeStr(shp.structuredAddressReadiness), ADDRESS_READINESS),
+          lastSwiftStandardsReview: matchOption(safeStr(shp.lastSwiftStandardsReview || shp.technologyRoadmap), SWIFT_REVIEW),
+          strategicAmbition: matchOption(safeStr(shp.strategicAmbition || shp.fiveYearVision), STRATEGIC_AMBITION),
+          reportTypeRequested: matchOption(safeStr(shp.reportTypeRequested), REPORT_TYPE),
           // organizationalProfile (support organizationalReadiness keys)
-          executiveSponsorship: safeStr(op.executiveSponsorship || op.executiveSupport),
+          executiveSponsorship: matchOption(safeStr(op.executiveSponsorship || op.executiveSupport), SPONSORSHIP),
           dedicatedPM: safeStr(op.dedicatedPM || op.projectGovernance),
-          changeManagement: safeStr(op.changeManagement || op.changeManagementCapability),
-          testingEnvironment: safeStr(op.testingEnvironment),
-          rollbackCapability: safeStr(op.rollbackCapability),
-          staffTraining: safeStr(op.staffTraining || op.staffTrainingNeeds),
+          changeManagement: matchOption(safeStr(op.changeManagement || op.changeManagementCapability), CHANGE_MGMT),
+          testingEnvironment: matchOption(safeStr(op.testingEnvironment), YES_NO_PARTIAL),
+          rollbackCapability: matchOption(safeStr(op.rollbackCapability), YES_NO_PARTIAL),
+          staffTraining: matchOption(safeStr(op.staffTraining || op.staffTrainingNeeds), TRAINING),
         };
 
         setFormData(imported);
