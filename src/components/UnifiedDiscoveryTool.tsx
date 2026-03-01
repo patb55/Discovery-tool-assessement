@@ -178,13 +178,18 @@ const UnifiedDiscoveryTool = () => {
         }
         const ip = json.institutionProfile || {};
         const tp = json.transactionProfile || {};
-        const tech = json.technicalProfile || {};
-        const sp = json.strategicProfile || {};
-        const bp = json.budgetProfile || {};
-        const fip = json.financialImpactProfile || {};
-        const mcp = json.marketContextProfile || {};
-        const shp = json.strategicHorizonProfile || {};
-        const op = json.organizationalProfile || {};
+        const tech = json.technicalProfile || json.technicalInfrastructure || {};
+        const sp = json.strategicProfile || json.strategicOrientation || {};
+        const bp = json.budgetProfile || json.budgetTimeline || {};
+        const fip = json.financialImpactProfile || json.financialImpact || {};
+        const mcp = json.marketContextProfile || json.marketContext || {};
+        const shp = json.strategicHorizonProfile || json.strategicHorizon || {};
+        const op = json.organizationalProfile || json.organizationalReadiness || {};
+        // Also pull legacy top-level sections
+        const ra = json.readinessAssessment || {};
+        const tr = json.technicalRequirements || {};
+        const spLegacy = json.strategicPreferences || {};
+        const tca = json.translationCostAnalysis || {};
 
         const safeStr = (v: any, fallback = '') => typeof v === 'string' ? v : fallback;
         const safeNum = (v: any, fallback = 0) => typeof v === 'number' ? v : fallback;
@@ -222,67 +227,79 @@ const UnifiedDiscoveryTool = () => {
           otherBankingRelationships: safeStr(ip.otherBankingRelationships),
           // transactionProfile
           monthlyVolume: safeNum(tp.monthlyVolume ?? json.totalMonthlyVolume),
-          annualGrowthRate: safeNum(tp.annualGrowthRate),
-          crossBorderPercent: safeNum(tp.crossBorderPercent),
+          annualGrowthRate: typeof tp.annualGrowthRate === 'number' ? tp.annualGrowthRate : (parseInt(String(tp.annualGrowthRate)) || 0),
+          crossBorderPercent: safeNum(tp.crossBorderPercent ?? tp.crossBorderPercentage),
           corridors: safeArr(tp.corridors ?? json.corridors, [{ currencyPair: '', monthlyVolume: 0 }]),
-          currencyCount: safeNum(tp.currencyCount),
-          messageDistribution: (tp.messageDistribution) ? {
-            mt103: safeNum(tp.messageDistribution.mt103),
-            mt202: safeNum(tp.messageDistribution.mt202),
-            mt900: safeNum(tp.messageDistribution.mt900),
-            mt910: safeNum(tp.messageDistribution.mt910),
-            other: safeNum(tp.messageDistribution.other),
+          currencyCount: safeNum(tp.currencyCount ?? tp.currenciesHandled),
+          messageDistribution: (tp.messageDistribution || tp.messageTypeDistribution) ? {
+            mt103: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt103),
+            mt202: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt202),
+            mt900: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt900),
+            mt910: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt910),
+            other: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.other),
           } : { ...INITIAL_FORM.messageDistribution },
           reconciliationComplexity: safeStr(tp.reconciliationComplexity),
-          // technicalProfile
-          coreSystem: safeStr(tech.coreSystem),
-          systemAge: safeStr(tech.systemAge || tech.currentSystemAge),
-          swiftConnectivity: safeStr(tech.swiftConnectivity || tech.existingSwiftInfrastructure),
-          messagingFormats: safeArr(tech.messagingFormats),
-          isoSendCapable: safeStr(tech.isoSendCapable),
-          isoReceiveCapable: safeStr(tech.isoReceiveCapable),
-          extendedFieldsCapable: safeStr(tech.extendedFieldsCapable),
+          // technicalProfile (support technicalInfrastructure keys)
+          coreSystem: safeStr(tech.coreSystem || tech.coreBankingSystem),
+          systemAge: safeStr(tech.systemAge || tech.currentSystemAge || ra.currentSystemAge),
+          swiftConnectivity: safeStr(tech.swiftConnectivity || tech.existingSwiftInfrastructure || tr.existingSwiftInfrastructure),
+          messagingFormats: (() => {
+            if (Array.isArray(tech.messagingFormats) && tech.messagingFormats.length) return tech.messagingFormats;
+            const mf = tech.messagingFormat;
+            if (mf && typeof mf === 'object') {
+              const fmts: string[] = [];
+              if (mf.mt) fmts.push('MT');
+              if (mf.iso20022) fmts.push('ISO 20022');
+              if (mf.proprietary) fmts.push('Proprietary');
+              if (mf.multiple) fmts.push('Multiple');
+              return fmts;
+            }
+            return [];
+          })(),
+          isoSendCapable: safeStr(tech.isoSendCapable || tech.iso20022SendCapability),
+          isoReceiveCapable: safeStr(tech.isoReceiveCapable || tech.iso20022ReceiveCapability),
+          extendedFieldsCapable: safeStr(tech.extendedFieldsCapable || tech.extendedDataCapability),
           integrationComplexity: safeStr(tech.integrationComplexity),
           itTeamSize: safeStr(tech.itTeamSize),
           blockchainExperience: safeBool(tech.blockchainExperience),
-          // strategicProfile
-          dltStrategyMaturity: safeStr(sp.dltStrategyMaturity),
-          november2026Priority: safeStr(sp.november2026Priority),
-          enhancedDataMandateReadiness: safeStr(sp.enhancedDataMandateReadiness),
-          primaryComplianceMotivation: safeStr(sp.primaryComplianceMotivation || sp.primaryMotivation),
-          // budgetProfile
+          // strategicProfile (support strategicOrientation keys)
+          dltStrategyMaturity: safeStr(sp.dltStrategyMaturity || sp.dltMaturity),
+          november2026Priority: safeStr(sp.november2026Priority || sp.nov2026StructuredAddressPriority),
+          enhancedDataMandateReadiness: safeStr(sp.enhancedDataMandateReadiness || sp.enhancedDataReadiness),
+          primaryComplianceMotivation: safeStr(sp.primaryComplianceMotivation || sp.primaryMotivation || spLegacy.primaryMotivation),
+          // budgetProfile (support budgetTimeline keys)
           complianceBudget: safeStr(bp.complianceBudget),
-          urgency: safeStr(bp.urgency),
-          targetGoLive: safeStr(bp.targetGoLive),
+          urgency: safeStr(bp.urgency || bp.implementationUrgency),
+          targetGoLive: safeStr(bp.targetGoLive || bp.targetGoLiveDate || ''),
           translationFeeTolerance: safeStr(bp.translationFeeTolerance),
           vendorSelectionStatus: safeStr(bp.vendorSelectionStatus),
-          // financialImpactProfile
+          // financialImpactProfile (support financialImpact keys)
           nostroRelationshipCount: safeStr(fip.nostroRelationshipCount),
           nostroBalanceRange: safeStr(fip.nostroBalanceRange),
-          costOfCapital: safeStr(fip.costOfCapital),
+          costOfCapital: safeStr(fip.costOfCapital || fip.costSensitivity),
           monthlyPaymentRepairVolume: safeStr(fip.monthlyPaymentRepairVolume),
           truncationRejections: safeStr(fip.truncationRejections),
-          capitalTreatmentAwareness: safeStr(fip.capitalTreatmentAwareness),
+          capitalTreatmentAwareness: safeStr(fip.capitalTreatmentAwareness || fip.budgetApprovalStatus),
           digitalAssetExposure: safeStr(fip.digitalAssetExposure),
-          // marketContextProfile
-          institutionClassification: safeStr(mcp.institutionClassification),
-          geographicFootprint: safeStr(mcp.geographicFootprint),
+          // marketContextProfile (support marketContext keys)
+          institutionClassification: safeStr(mcp.institutionClassification || mcp.marketPosition),
+          geographicFootprint: safeStr(mcp.geographicFootprint || mcp.differentiationStrategy),
           primaryCorridorRegions: safeArr(mcp.primaryCorridorRegions),
-          boardAwarenessLevel: safeStr(mcp.boardAwarenessLevel),
+          boardAwarenessLevel: safeStr(mcp.boardAwarenessLevel || mcp.regulatoryPressureLevel),
           peerBenchmarkConsent: safeBool(mcp.peerBenchmarkConsent),
-          // strategicHorizonProfile
+          // strategicHorizonProfile (support strategicHorizon keys)
           swiftTranslationOptInStatus: safeStr(shp.swiftTranslationOptInStatus),
           structuredAddressReadiness: safeStr(shp.structuredAddressReadiness),
-          lastSwiftStandardsReview: safeStr(shp.lastSwiftStandardsReview),
-          strategicAmbition: safeStr(shp.strategicAmbition),
+          lastSwiftStandardsReview: safeStr(shp.lastSwiftStandardsReview || shp.technologyRoadmap),
+          strategicAmbition: safeStr(shp.strategicAmbition || shp.fiveYearVision),
           reportTypeRequested: safeStr(shp.reportTypeRequested),
-          // organizationalProfile
-          executiveSponsorship: safeStr(op.executiveSponsorship),
-          dedicatedPM: safeStr(op.dedicatedPM),
-          changeManagement: safeStr(op.changeManagement),
+          // organizationalProfile (support organizationalReadiness keys)
+          executiveSponsorship: safeStr(op.executiveSponsorship || op.executiveSupport),
+          dedicatedPM: safeStr(op.dedicatedPM || op.projectGovernance),
+          changeManagement: safeStr(op.changeManagement || op.changeManagementCapability),
           testingEnvironment: safeStr(op.testingEnvironment),
           rollbackCapability: safeStr(op.rollbackCapability),
-          staffTraining: safeStr(op.staffTraining),
+          staffTraining: safeStr(op.staffTraining || op.staffTrainingNeeds),
         };
 
         setFormData(imported);
