@@ -16,7 +16,7 @@ export interface DiscoveryFormData {
   monthlyVolume: number;
   annualGrowthRate: number;
   crossBorderPercent: number;
-  corridors: { currencyPair: string; monthlyVolume: number }[];
+  corridors: { currencyPair: string; monthlyVolume: number; volumeShare?: number; enabled?: boolean }[];
   currencyCount: number;
   messageDistribution: { mt103: number; mt202: number; mt900: number; mt910: number; other: number };
   reconciliationComplexity: string;
@@ -83,12 +83,12 @@ export const calculateTechnicalReadiness = (d: DiscoveryFormData): number => {
   let score = 0;
   const ageMap: Record<string, number> = { 'Latest version': 20, '1-2 years old': 15, '3-5 years old': 10, '5-10 years old': 5, 'Over 10 years old': 0 };
   score += ageMap[d.systemAge] ?? 0;
-  const isoMap: Record<string, number> = { 'Yes': 15, 'In progress': 8, 'No': 0 };
+  const isoMap: Record<string, number> = { 'Yes': 15, 'Partial': 8, 'In progress': 8, 'No': 0 };
   score += isoMap[d.isoSendCapable] ?? 0;
   score += isoMap[d.isoReceiveCapable] ?? 0;
   const intMap: Record<string, number> = { 'Low': 15, 'Medium': 10, 'High': 5, 'Very High': 0 };
   score += intMap[d.integrationComplexity] ?? 0;
-  const teamMap: Record<string, number> = { '10+': 15, '6-10': 12, '3-5': 8, '1-2': 4, '0': 0 };
+  const teamMap: Record<string, number> = { '26+': 15, '10-25': 15, '10+': 15, '6-10': 12, '6-9': 12, '3-5': 8, '1-2': 4, '0': 0 };
   score += teamMap[d.itTeamSize] ?? 0;
   const extMap: Record<string, number> = { 'Yes': 10, 'Partial': 5, 'No': 0 };
   score += extMap[d.extendedFieldsCapable] ?? 0;
@@ -98,14 +98,14 @@ export const calculateTechnicalReadiness = (d: DiscoveryFormData): number => {
 
 export const calculateOrganizationalReadiness = (d: DiscoveryFormData): number => {
   let score = 0;
-  const sponsorMap: Record<string, number> = { 'C-suite champion': 25, 'Dedicated sponsor': 20, 'Active support': 15, 'Awareness': 5, 'None': 0 };
+  const sponsorMap: Record<string, number> = { 'C-suite champion': 25, 'C-level champion': 25, 'Dedicated sponsor': 20, 'Strong commitment': 20, 'Active support': 15, 'Awareness': 5, 'None': 0, 'No sponsorship': 0 };
   score += sponsorMap[d.executiveSponsorship] ?? 0;
   score += d.dedicatedPM === 'Yes' ? 20 : 0;
   const cmMap: Record<string, number> = { 'Strong': 20, 'Moderate': 12, 'Limited': 5, 'None': 0 };
   score += cmMap[d.changeManagement] ?? 0;
-  const testMap: Record<string, number> = { 'Yes': 20, 'Partial': 10, 'No': 0 };
+  const testMap: Record<string, number> = { 'Yes': 20, 'Full': 20, 'Partial': 10, 'No': 0, 'None': 0 };
   score += testMap[d.testingEnvironment] ?? 0;
-  const trainMap: Record<string, number> = { 'Complete': 15, 'In progress': 8, 'Planned': 3, 'Not started': 0 };
+  const trainMap: Record<string, number> = { 'Complete': 15, 'Completed': 15, 'In progress': 8, 'Planned': 3, 'Not started': 0 };
   score += trainMap[d.staffTraining] ?? 0;
   return score;
 };
@@ -122,7 +122,7 @@ export const calculateScores = (d: DiscoveryFormData): DiscoveryScores => {
 };
 
 const getRecommendedPathway = (d: DiscoveryFormData, scores: DiscoveryScores): string => {
-  const dltActive = d.dltStrategyMaturity && d.dltStrategyMaturity !== 'No interest currently' && d.dltStrategyMaturity !== 'Monitoring developments';
+  const dltActive = d.dltStrategyMaturity && d.dltStrategyMaturity !== 'Not exploring' && d.dltStrategyMaturity !== 'No interest currently' && d.dltStrategyMaturity !== 'Monitoring developments';
   if (d.blockchainExperience && dltActive) return 'Hybrid';
   if (d.blockchainExperience) return 'DLT';
   return 'Traditional';
@@ -171,7 +171,12 @@ export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
       monthlyVolume: d.monthlyVolume,
       annualGrowthRate: d.annualGrowthRate,
       crossBorderPercent: d.crossBorderPercent,
-      corridors: d.corridors.filter(c => c.currencyPair),
+      corridors: d.corridors.filter(c => c.currencyPair).map(c => ({
+        currencyPair: c.currencyPair,
+        monthlyVolume: c.monthlyVolume,
+        ...(c.volumeShare !== undefined && { volumeShare: c.volumeShare }),
+        ...(c.enabled !== undefined && { enabled: c.enabled }),
+      })),
       currencyCount: d.currencyCount,
       messageDistribution: d.messageDistribution,
       reconciliationComplexity: d.reconciliationComplexity
@@ -529,7 +534,7 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
   tableEnd = (doc as any).lastAutoTable?.finalY || y + 50;
 
   // DLT Strategy flag (replaces old CBDC flag)
-  const dltActive = d.dltStrategyMaturity && d.dltStrategyMaturity !== 'No interest currently';
+  const dltActive = d.dltStrategyMaturity && d.dltStrategyMaturity !== 'Not exploring' && d.dltStrategyMaturity !== 'No interest currently';
   if (dltActive) {
     y = tableEnd + 8;
     doc.setFillColor(240, 248, 255);
