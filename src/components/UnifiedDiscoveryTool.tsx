@@ -191,16 +191,34 @@ const UnifiedDiscoveryTool = () => {
         const safeBool = (v: any, fallback = false) => typeof v === 'boolean' ? v : fallback;
         const safeArr = (v: any, fallback: any[] = []) => Array.isArray(v) ? v : fallback;
 
+        // Normalize imported dropdown values to match exact option lists
+        const matchOption = (val: string, options: string[]): string => {
+          if (!val) return '';
+          // Exact match first
+          if (options.includes(val)) return val;
+          // Case-insensitive match
+          const lower = val.toLowerCase();
+          const found = options.find(o => o.toLowerCase() === lower);
+          if (found) return found;
+          // Partial / fuzzy — if the imported value contains an option or vice versa
+          const partial = options.find(o => lower.includes(o.toLowerCase()) || o.toLowerCase().includes(lower));
+          return partial || val; // fall back to raw value so user can see it
+        };
+
+        // Normalize banking relationships to match BANKING_PARTNERS canonical names
+        const rawBanking = safeArr(ip.bankingRelationships);
+        const normalizedBanking = rawBanking.map((b: string) => normalizeBankName(b) || b);
+
         const imported: DiscoveryFormData = {
           ...INITIAL_FORM,
           // institutionProfile (support both export-format keys and direct keys)
           institutionName: safeStr(ip.name || ip.institutionName),
-          institutionType: safeStr(ip.type || ip.institutionType),
-          totalAssets: safeStr(ip.assetSize || ip.totalAssets),
+          institutionType: matchOption(safeStr(ip.type || ip.institutionType), INSTITUTION_TYPES),
+          totalAssets: matchOption(safeStr(ip.assetSize || ip.totalAssets), ASSET_SIZES),
           countriesOfOperation: safeNum(ip.countries ?? ip.countriesOfOperation),
           regions: safeArr(ip.regions),
           isGlobal: safeBool(ip.isGlobal),
-          bankingRelationships: safeArr(ip.bankingRelationships),
+          bankingRelationships: normalizedBanking,
           otherBankingRelationships: safeStr(ip.otherBankingRelationships),
           // transactionProfile
           monthlyVolume: safeNum(tp.monthlyVolume ?? json.totalMonthlyVolume),
@@ -541,10 +559,20 @@ const RadioField = ({ label, value, options, onChange, helper }: { label: string
 // === STEP COMPONENTS ===
 const BANKING_PARTNERS = [
   'JPMorgan Chase', 'Deutsche Bank', 'Standard Chartered', 'DBS Bank',
-  'BNP Paribas', 'Societe Generale', 'HSBC', 'Barclays',
+  'BNP Paribas', 'Société Générale', 'HSBC', 'Barclays',
   'Citibank', 'Bank of America', 'UBS', 'Credit Suisse',
   'ING', 'Santander', 'UniCredit', 'Other (specify below)',
 ];
+
+// Normalize banking partner names for import matching (handles accent variants)
+const normalizeBankName = (name: string): string | null => {
+  const lower = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  for (const bank of BANKING_PARTNERS) {
+    const bankLower = bank.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (lower === bankLower) return bank;
+  }
+  return null;
+};
 
 const Step1 = ({ formData: d, update, handleRegionToggle, handleBankToggle }: { formData: DiscoveryFormData; update: any; handleRegionToggle: (r: string, c: boolean) => void; handleBankToggle: (bank: string, checked: boolean) => void }) => (
   <>
@@ -681,7 +709,8 @@ const Step2 = ({ formData: d, update }: { formData: DiscoveryFormData; update: a
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <FieldLabel label="Monthly Payment Message Volume" helper="Average number of payment messages per month. For volumes above 20M, contact us for enterprise assessment." />
-          <input type="number" min={1000} max={20000000} value={d.monthlyVolume || ''} onChange={e => update('monthlyVolume', e.target.valueAsNumber || 0)}
+          <input type="text" inputMode="numeric" value={d.monthlyVolume ? d.monthlyVolume.toLocaleString() : ''}
+            onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); update('monthlyVolume', parseInt(raw) || 0); }}
             className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
             placeholder="1,000 – 20,000,000" />
         </div>
