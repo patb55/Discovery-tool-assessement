@@ -193,22 +193,22 @@ const UnifiedDiscoveryTool = () => {
 
         const imported: DiscoveryFormData = {
           ...INITIAL_FORM,
-          // institutionProfile
-          institutionName: safeStr(ip.name),
-          institutionType: safeStr(ip.type),
-          totalAssets: safeStr(ip.assetSize),
-          countriesOfOperation: safeNum(ip.countries),
+          // institutionProfile (support both export-format keys and direct keys)
+          institutionName: safeStr(ip.name || ip.institutionName),
+          institutionType: safeStr(ip.type || ip.institutionType),
+          totalAssets: safeStr(ip.assetSize || ip.totalAssets),
+          countriesOfOperation: safeNum(ip.countries ?? ip.countriesOfOperation),
           regions: safeArr(ip.regions),
           isGlobal: safeBool(ip.isGlobal),
           bankingRelationships: safeArr(ip.bankingRelationships),
           otherBankingRelationships: safeStr(ip.otherBankingRelationships),
           // transactionProfile
-          monthlyVolume: safeNum(tp.monthlyVolume),
+          monthlyVolume: safeNum(tp.monthlyVolume ?? json.totalMonthlyVolume),
           annualGrowthRate: safeNum(tp.annualGrowthRate),
           crossBorderPercent: safeNum(tp.crossBorderPercent),
-          corridors: safeArr(tp.corridors, [{ currencyPair: '', monthlyVolume: 0 }]),
+          corridors: safeArr(tp.corridors ?? json.corridors, [{ currencyPair: '', monthlyVolume: 0 }]),
           currencyCount: safeNum(tp.currencyCount),
-          messageDistribution: tp.messageDistribution ? {
+          messageDistribution: (tp.messageDistribution) ? {
             mt103: safeNum(tp.messageDistribution.mt103),
             mt202: safeNum(tp.messageDistribution.mt202),
             mt900: safeNum(tp.messageDistribution.mt900),
@@ -218,8 +218,8 @@ const UnifiedDiscoveryTool = () => {
           reconciliationComplexity: safeStr(tp.reconciliationComplexity),
           // technicalProfile
           coreSystem: safeStr(tech.coreSystem),
-          systemAge: safeStr(tech.systemAge),
-          swiftConnectivity: safeStr(tech.swiftConnectivity),
+          systemAge: safeStr(tech.systemAge || tech.currentSystemAge),
+          swiftConnectivity: safeStr(tech.swiftConnectivity || tech.existingSwiftInfrastructure),
           messagingFormats: safeArr(tech.messagingFormats),
           isoSendCapable: safeStr(tech.isoSendCapable),
           isoReceiveCapable: safeStr(tech.isoReceiveCapable),
@@ -231,7 +231,7 @@ const UnifiedDiscoveryTool = () => {
           dltStrategyMaturity: safeStr(sp.dltStrategyMaturity),
           november2026Priority: safeStr(sp.november2026Priority),
           enhancedDataMandateReadiness: safeStr(sp.enhancedDataMandateReadiness),
-          primaryComplianceMotivation: safeStr(sp.primaryComplianceMotivation),
+          primaryComplianceMotivation: safeStr(sp.primaryComplianceMotivation || sp.primaryMotivation),
           // budgetProfile
           complianceBudget: safeStr(bp.complianceBudget),
           urgency: safeStr(bp.urgency),
