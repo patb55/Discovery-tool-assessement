@@ -10,6 +10,8 @@ export interface DiscoveryFormData {
   countriesOfOperation: number;
   regions: string[];
   isGlobal: boolean;
+  bankingRelationships: string[];
+  otherBankingRelationships: string;
   // Step 2
   monthlyVolume: number;
   annualGrowthRate: number;
@@ -161,7 +163,9 @@ export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
       assetSize: d.totalAssets,
       countries: d.countriesOfOperation,
       regions: d.regions,
-      isGlobal: d.isGlobal
+      isGlobal: d.isGlobal,
+      bankingRelationships: d.bankingRelationships.length > 0 ? d.bankingRelationships : [],
+      otherBankingRelationships: d.otherBankingRelationships || null
     },
     transactionProfile: {
       monthlyVolume: d.monthlyVolume,
@@ -292,6 +296,20 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
   doc.text('Type:', m, y);
   doc.setFont('helvetica', 'normal');
   doc.text(d.institutionType || 'N/A', m + 18, y);
+
+  // Banking Relationships
+  if (d.bankingRelationships && d.bankingRelationships.length > 0) {
+    y += 7;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Banking Relationships:', m, y);
+    doc.setFont('helvetica', 'normal');
+    const allBanks = [...d.bankingRelationships];
+    if (d.otherBankingRelationships) allBanks.push(d.otherBankingRelationships);
+    const bankText = allBanks.join(', ');
+    const bankLines = doc.splitTextToSize(bankText, pw - 2 * m - 50);
+    doc.text(bankLines, m + 52, y);
+    y += Math.max(7, bankLines.length * 5);
+  }
 
   y += 15;
   const scoreColor = scores.overallReadiness >= 81 ? [34, 197, 94] : scores.overallReadiness >= 61 ? [251, 188, 4] : scores.overallReadiness >= 41 ? [234, 150, 50] : [234, 67, 53];

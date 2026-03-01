@@ -14,7 +14,7 @@ async function sha256(message: string): Promise<string> {
 
 const INITIAL_FORM: DiscoveryFormData = {
   institutionName: '', institutionType: '', totalAssets: '', countriesOfOperation: 0,
-  regions: [], isGlobal: false,
+  regions: [], isGlobal: false, bankingRelationships: [], otherBankingRelationships: '',
   monthlyVolume: 0, annualGrowthRate: 0, crossBorderPercent: 0,
   corridors: [{ currencyPair: '', monthlyVolume: 0 }],
   currencyCount: 0, messageDistribution: { mt103: 0, mt202: 0, mt900: 0, mt910: 0, other: 0 }, reconciliationComplexity: '',
@@ -199,6 +199,8 @@ const UnifiedDiscoveryTool = () => {
           countriesOfOperation: safeNum(ip.countries),
           regions: safeArr(ip.regions),
           isGlobal: safeBool(ip.isGlobal),
+          bankingRelationships: safeArr(ip.bankingRelationships),
+          otherBankingRelationships: safeStr(ip.otherBankingRelationships),
           // transactionProfile
           monthlyVolume: safeNum(tp.monthlyVolume),
           annualGrowthRate: safeNum(tp.annualGrowthRate),
@@ -456,7 +458,16 @@ const UnifiedDiscoveryTool = () => {
 
           {/* Step content */}
           <div className="space-y-6 mb-8">
-            {currentStep === 0 && <Step1 formData={formData} update={update} handleRegionToggle={handleRegionToggle} />}
+            {currentStep === 0 && <Step1 formData={formData} update={update} handleRegionToggle={handleRegionToggle}
+              handleBankToggle={(bank: string, checked: boolean) => {
+                const current = formData.bankingRelationships || [];
+                if (checked) {
+                  update('bankingRelationships', [...current, bank]);
+                } else {
+                  update('bankingRelationships', current.filter(b => b !== bank));
+                  if (bank === 'Other (specify below)') update('otherBankingRelationships', '');
+                }
+              }} />}
             {currentStep === 1 && <Step2 key={corridorVersion} formData={formData} update={update} />}
             {currentStep === 2 && <Step3 formData={formData} update={update} handleMsgFormatToggle={handleMsgFormatToggle} />}
             {currentStep === 3 && <Step4 formData={formData} update={update} />}
@@ -526,7 +537,14 @@ const RadioField = ({ label, value, options, onChange, helper }: { label: string
 );
 
 // === STEP COMPONENTS ===
-const Step1 = ({ formData: d, update, handleRegionToggle }: { formData: DiscoveryFormData; update: any; handleRegionToggle: (r: string, c: boolean) => void }) => (
+const BANKING_PARTNERS = [
+  'JPMorgan Chase', 'Deutsche Bank', 'Standard Chartered', 'DBS Bank',
+  'BNP Paribas', 'Societe Generale', 'HSBC', 'Barclays',
+  'Citibank', 'Bank of America', 'UBS', 'Credit Suisse',
+  'ING', 'Santander', 'UniCredit', 'Other (specify below)',
+];
+
+const Step1 = ({ formData: d, update, handleRegionToggle, handleBankToggle }: { formData: DiscoveryFormData; update: any; handleRegionToggle: (r: string, c: boolean) => void; handleBankToggle: (bank: string, checked: boolean) => void }) => (
   <>
     <h2 className="text-xl font-bold text-foreground">Step 1: Institution Profile</h2>
     <div className="grid md:grid-cols-2 gap-4">
@@ -558,6 +576,25 @@ const Step1 = ({ formData: d, update, handleRegionToggle }: { formData: Discover
       {d.isGlobal && (
         <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 flex items-center gap-2">
           <CheckCircle className="w-4 h-4" /> Global operations selected — all regions included.
+        </div>
+      )}
+    </div>
+    <div>
+      <FieldLabel label="Existing Banking Relationships" helper="Some platforms require existing banking relationships for access. Select institutions where your organization maintains corporate banking services." />
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        {BANKING_PARTNERS.map(bank => (
+          <label key={bank} className="flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer">
+            <input type="checkbox" checked={d.bankingRelationships?.includes(bank) || false} onChange={e => handleBankToggle(bank, e.target.checked)}
+              className="h-4 w-4 rounded border-input text-primary focus:ring-ring" />
+            <span className="text-sm text-foreground">{bank}</span>
+          </label>
+        ))}
+      </div>
+      {d.bankingRelationships?.includes('Other (specify below)') && (
+        <div className="mt-3">
+          <input type="text" placeholder="Specify other banking relationships..." value={d.otherBankingRelationships || ''}
+            onChange={e => update('otherBankingRelationships', e.target.value)}
+            className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring" />
         </div>
       )}
     </div>
