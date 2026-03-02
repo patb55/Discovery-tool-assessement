@@ -313,8 +313,8 @@ const UnifiedDiscoveryTool = () => {
           executiveSponsorship: matchOption(safeStr(op.executiveSponsorship || op.executiveSupport), SPONSORSHIP),
           dedicatedPM: safeStr(op.dedicatedPM || op.projectGovernance),
           changeManagement: matchOption(safeStr(op.changeManagement || op.changeManagementCapability), CHANGE_MGMT),
-          testingEnvironment: matchOption(safeStr(op.testingEnvironment), YES_NO_PARTIAL),
-          rollbackCapability: matchOption(safeStr(op.rollbackCapability), YES_NO_PARTIAL),
+          testingEnvironment: matchOption(((v) => v === 'Full' ? 'Yes' : v)(safeStr(op.testingEnvironment)), YES_NO_PARTIAL),
+          rollbackCapability: matchOption(((v) => v === 'Full' ? 'Yes' : v)(safeStr(op.rollbackCapability)), YES_NO_PARTIAL),
           staffTraining: matchOption(safeStr(op.staffTraining || op.staffTrainingNeeds), TRAINING),
         };
 
