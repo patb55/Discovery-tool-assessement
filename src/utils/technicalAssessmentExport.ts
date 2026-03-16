@@ -688,7 +688,7 @@ export const generateJSONExport = (formData: FormData, report: Report, regions: 
     
     infrastructure: {
       deploymentType: formData.deploymentType || '',
-      itTeamSize: parseInt(formData.itTeamSize) || 0,
+      itTeamSize: formData.itTeamSize || '0',
       technicalExpertise: parseInt(formData.technicalExpertise) || 0,
       upgradeBudget: formData.upgradeBudget || '',
       acceptableDowntime: formData.acceptableDowntime || ''
