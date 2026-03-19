@@ -100,13 +100,19 @@ export const calculateOrganizationalReadiness = (d: DiscoveryFormData): number =
   let score = 0;
   const sponsorMap: Record<string, number> = { 'C-suite champion': 25, 'C-level champion': 25, 'Dedicated sponsor': 20, 'Strong commitment': 20, 'Active support': 15, 'Awareness': 5, 'None': 0, 'No sponsorship': 0 };
   score += sponsorMap[d.executiveSponsorship] ?? 0;
-  score += d.dedicatedPM === 'Yes' ? 20 : 0;
+  // Safe default: absent/empty dedicatedPM = "No" (0 points), only explicit "Yes" scores
+  score += (d.dedicatedPM && d.dedicatedPM === 'Yes') ? 20 : 0;
   const cmMap: Record<string, number> = { 'Strong': 20, 'Moderate': 12, 'Limited': 5, 'None': 0 };
   score += cmMap[d.changeManagement] ?? 0;
+  // Safe default: absent/empty testingEnvironment = 0 points
   const testMap: Record<string, number> = { 'Yes': 20, 'Full': 20, 'Partial': 10, 'No': 0, 'None': 0 };
-  score += testMap[d.testingEnvironment] ?? 0;
+  score += (d.testingEnvironment && testMap[d.testingEnvironment] !== undefined) ? testMap[d.testingEnvironment] : 0;
+  // Safe default: absent/empty rollbackCapability = 0 points (not scored but guard anyway)
+  const rollbackMap: Record<string, number> = { 'Yes': 10, 'Full': 10, 'Partial': 5, 'No': 0, 'None': 0 };
+  score += (d.rollbackCapability && rollbackMap[d.rollbackCapability] !== undefined) ? rollbackMap[d.rollbackCapability] : 0;
+  // Safe default: absent/empty staffTraining = 0 points
   const trainMap: Record<string, number> = { 'Complete': 15, 'Completed': 15, 'In progress': 8, 'Planned': 3, 'Not started': 0 };
-  score += trainMap[d.staffTraining] ?? 0;
+  score += (d.staffTraining && trainMap[d.staffTraining] !== undefined) ? trainMap[d.staffTraining] : 0;
   return score;
 };
 
@@ -146,6 +152,30 @@ const getFileSafeName = (name: string): string => (name || 'Discovery').replace(
 const formatNumber = (value: number): string => {
   if (typeof value !== 'number' || isNaN(value)) return '0';
   return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
+
+// === Export Normalisation Helpers ===
+const exportSwiftOptIn = (v: string): string => {
+  if (v?.toLowerCase().includes('opted in') && !v.includes('('))
+    return 'Opted in (using translation)';
+  if (v?.toLowerCase().includes('opted out') && !v.includes('('))
+    return 'Opted out (fully MX)';
+  return v || '';
+};
+
+const exportItTeamSize = (v: string): string => {
+  if (!v) return '0';
+  // Already a bucket label — pass through
+  if (['0', '1-2', '3-5', '6-9', '6-10', '10-25', '10+', '26+'].includes(v)) return v;
+  // Raw number — bucket it
+  const n = parseInt(v, 10);
+  if (isNaN(n)) return v;
+  if (n === 0) return '0';
+  if (n <= 2) return '1-2';
+  if (n <= 5) return '3-5';
+  if (n <= 9) return '6-9';
+  if (n <= 25) return '10-25';
+  return '26+';
 };
 
 // === JSON Export ===
@@ -190,7 +220,7 @@ export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
       isoReceiveCapable: d.isoReceiveCapable,
       extendedFieldsCapable: d.extendedFieldsCapable,
       integrationComplexity: d.integrationComplexity,
-      itTeamSize: d.itTeamSize,
+      itTeamSize: exportItTeamSize(d.itTeamSize),
       blockchainExperience: d.blockchainExperience
     },
     strategicProfile: {
@@ -223,7 +253,7 @@ export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
       peerBenchmarkConsent: d.peerBenchmarkConsent
     },
     strategicHorizonProfile: {
-      swiftTranslationOptInStatus: d.swiftTranslationOptInStatus,
+      swiftTranslationOptInStatus: exportSwiftOptIn(d.swiftTranslationOptInStatus),
       structuredAddressReadiness: d.structuredAddressReadiness,
       lastSwiftStandardsReview: d.lastSwiftStandardsReview,
       strategicAmbition: d.strategicAmbition,
