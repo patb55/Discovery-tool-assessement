@@ -253,7 +253,7 @@ export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
       peerBenchmarkConsent: d.peerBenchmarkConsent
     },
     strategicHorizonProfile: {
-      swiftTranslationOptInStatus: d.swiftTranslationOptInStatus,
+      swiftTranslationOptInStatus: exportSwiftOptIn(d.swiftTranslationOptInStatus),
       structuredAddressReadiness: d.structuredAddressReadiness,
       lastSwiftStandardsReview: d.lastSwiftStandardsReview,
       strategicAmbition: d.strategicAmbition,
