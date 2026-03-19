@@ -281,18 +281,133 @@ const UnifiedDiscoveryTool = () => {
           return v;
         };
 
+        // Alias map for known import mismatches
+        const ALIAS_MAP: Record<string, Record<string, string>> = {
+          institutionType: {
+            'Asset Manager': 'Other', 'Fintech': 'Payment Institution', 'Fintech payment provider': 'Payment Institution',
+            'Asset manager': 'Other', 'Community Bank': 'Regional Bank', 'Community bank': 'Regional Bank', 'Investment Manager': 'Other',
+          },
+          assetSize: {
+            '€500M-€1B': 'Under €1B', '€100M-€500M': 'Under €1B', 'Under €500M': 'Under €1B',
+            '€1B-€5B': '€1B-€10B', '€5B-€10B': '€1B-€10B', '€10B-€50B': '€10B-€50B',
+            '€50B-€100B': '€50B-€200B', '€100B-€200B': '€50B-€200B',
+          },
+          systemAge: {
+            '1-2 years old': '1-2 years old', '3-5 years old': '3-5 years old',
+            '5-7 years old': '5-10 years old', '7-10 years old': '5-10 years old', '5-10 years old': '5-10 years old',
+            '10+ years old': 'Over 10 years old', '10-15 years old': 'Over 10 years old', 'Over 10 years old': 'Over 10 years old',
+          },
+          swiftConnectivity: {
+            'SWIFT GPI': 'Alliance Access', 'SWIFT Service Bureau': 'Service Bureau', 'Service Bureau': 'Service Bureau',
+            'Alliance Access': 'Alliance Access', 'Alliance Lite2': 'Alliance Lite2', 'Direct connection': 'Direct', 'None': 'None',
+          },
+          isoReceiveCapable: {
+            'Partial': 'In progress', 'partial': 'In progress', 'Yes': 'Yes', 'No': 'No', 'true': 'Yes', 'false': 'No',
+          },
+          isoSendCapable: {
+            'Partial': 'In progress', 'partial': 'In progress', 'Yes': 'Yes', 'No': 'No', 'true': 'Yes', 'false': 'No',
+          },
+          extendedFieldsCapable: {
+            'Full': 'Yes', 'Partial': 'In progress', 'None': 'No', 'full': 'Yes', 'partial': 'In progress', 'none': 'No',
+            'Limited': 'Partial',
+          },
+          dltStrategyMaturity: {
+            'No strategy': 'Not exploring', 'No DLT strategy': 'Not exploring', 'Research phase': 'Monitoring developments',
+            'Research': 'Monitoring developments', 'Exploring': 'Exploring / Learning', 'Exploring / Learning': 'Exploring / Learning',
+            'Evaluating': 'Actively evaluating', 'Actively evaluating': 'Actively evaluating',
+            'Actively piloting': 'Active pilot / POC', 'Pilot': 'Active pilot / POC', 'Active pilot / POC': 'Active pilot / POC',
+            'Production': 'Production deployment', 'Production deployment': 'Production deployment',
+          },
+          november2026Priority: {
+            'Critical priority': 'Critical priority', 'High priority': 'Active planning', 'Already planning': 'Active planning',
+            'Active planning': 'Active planning', 'Aware but not planning': 'On our radar', 'Aware but not yet planning': 'On our radar',
+            'On our radar': 'On our radar', 'Not planning': 'Not yet planned', 'Not yet planned': 'Not yet planned',
+            'Planning phase': 'Active planning', 'Compliant': 'Compliant',
+          },
+          enhancedDataMandateReadiness: {
+            'Not started': 'Not aware of structured address / enhanced data requirements',
+            'Not aware': 'Not aware of structured address / enhanced data requirements',
+            'Aware': 'Aware but not yet started planning', 'Aware but not yet started planning': 'Aware but not yet started planning',
+            'Planning stage': 'Planning phase — mapping data fields and assessing data quality',
+            'Planning': 'Planning phase — mapping data fields and assessing data quality',
+            'In progress': 'Planning phase — mapping data fields and assessing data quality',
+            'Implementation started': 'Planning phase — mapping data fields and assessing data quality',
+            'Ready': 'Ready for November 2026 structured address deadline',
+            'Complete': 'Ready for November 2026 structured address deadline',
+          },
+          primaryComplianceMotivation: {
+            'Regulatory requirement': 'Regulatory obligation (must comply)', 'Regulatory obligation': 'Regulatory obligation (must comply)',
+            'Regulatory obligation (must comply)': 'Regulatory obligation (must comply)',
+            'Competitive advantage': 'Competitive positioning', 'Competitive positioning': 'Competitive positioning',
+            'Cost reduction': 'Cost reduction (translation fees)', 'Cost reduction (translation fees)': 'Cost reduction (translation fees)',
+            'Cost reduction through lower transaction fees': 'Cost reduction through lower transaction fees',
+            'Client demand': 'Client demand', 'All of the above': 'All of the above',
+          },
+          vendorSelectionStatus: {
+            'Not started': 'Not started', 'Early evaluation': 'Evaluating options', 'Evaluating options': 'Evaluating options',
+            'Shortlisted': 'Shortlisted vendors', 'Shortlisted vendors': 'Shortlisted vendors', 'Selected': 'Selected', 'Contracted': 'Contracted',
+          },
+          digitalAssetExposure: {
+            'None': 'None', 'Monitoring': 'Monitoring only', 'Monitoring only': 'Monitoring only',
+            'Exploring': 'Pilot or exploring', 'Pilot or exploring': 'Pilot or exploring',
+            'Exploring (€1M-€10M)': 'Pilot or exploring', 'Significant (>€10M)': 'Operational', 'Operational': 'Operational',
+          },
+          institutionClassification: {
+            'Asset manager': 'Specialized institution', 'Asset Manager': 'Specialized institution',
+            'Fintech payment provider': 'Specialized institution', 'Fintech': 'Specialized institution',
+            'Community bank': 'Regional bank', 'Community Bank': 'Regional bank',
+            'Commercial bank': 'Commercial bank', 'Commercial Bank': 'Commercial bank',
+            'Savings bank': 'Savings bank', 'Regional bank': 'Regional bank', 'Regional Bank': 'Regional bank',
+            'Credit cooperative': 'Credit cooperative', 'Investment bank': 'Specialized institution',
+          },
+          geographicFootprint: {
+            'Domestic only': 'Domestic only', 'Domestic US': 'Domestic only',
+            'European': 'Europe broad', 'Europe broad': 'Europe broad', 'Eurozone': 'Eurozone',
+            'Asia-Pacific': 'Global', 'Global': 'Global', 'International': 'Global',
+          },
+          boardAwarenessLevel: {
+            'No awareness': 'No awareness', 'Basic awareness': 'Partial awareness', 'Awareness': 'Awareness',
+            'Partial awareness': 'Partial awareness', 'Moderate awareness': 'Moderate awareness',
+            'Full board engagement': 'Full awareness and active engagement', 'Full awareness': 'Full awareness and active engagement',
+            'Full awareness and active engagement': 'Full awareness and active engagement',
+          },
+          strategicAmbition: {
+            'Compliance only': 'Compliance only', 'Compliance minimum': 'Compliance only',
+            'Compliance and stability': 'Compliance and optimization', 'Compliance and optimization': 'Compliance and optimization',
+            'Market leadership': 'Strategic transformation', 'Strategic transformation': 'Strategic transformation',
+            'Operational excellence': 'Compliance and optimization',
+          },
+          executiveSponsorship: {
+            'No sponsorship': 'No sponsorship', 'None': 'No sponsorship', 'Limited awareness': 'Awareness', 'Awareness': 'Awareness',
+            'Partial commitment': 'Active support', 'Active support': 'Active support',
+            'Full commitment': 'Strong commitment', 'Strong commitment': 'Strong commitment',
+            'C-level champion': 'C-level champion', 'C-suite champion': 'C-suite champion',
+          },
+          reconciliationComplexity: {
+            'Low': 'Simple', 'Simple': 'Simple', 'Medium': 'Moderate', 'Moderate': 'Moderate',
+            'High': 'Complex', 'Complex': 'Complex', 'Very High': 'Very Complex', 'Very Complex': 'Very Complex',
+          },
+        };
+
         // Normalize imported dropdown values to match exact option lists
-        const matchOption = (val: string, options: string[]): string => {
+        const matchOption = (val: string, options: string[], fieldKey?: string): string => {
           if (!val) return '';
-          // Exact match first
+          // 1. Check alias map first (most reliable)
+          if (fieldKey && ALIAS_MAP[fieldKey]) {
+            const alias = ALIAS_MAP[fieldKey][val] || ALIAS_MAP[fieldKey][val.toLowerCase()];
+            if (alias && options.includes(alias)) return alias;
+          }
+          // 2. Exact match
           if (options.includes(val)) return val;
-          // Case-insensitive match
+          // 3. Case-insensitive match
           const lower = val.toLowerCase();
           const found = options.find(o => o.toLowerCase() === lower);
           if (found) return found;
-          // Partial / fuzzy — if the imported value contains an option or vice versa
-          const partial = options.find(o => lower.includes(o.toLowerCase()) || o.toLowerCase().includes(lower));
-          return partial || val; // fall back to raw value so user can see it
+          // 4. Partial match (contains)
+          const partial = options.find(o =>
+            lower.includes(o.toLowerCase()) || o.toLowerCase().includes(lower)
+          );
+          return partial || val;
         };
 
         // Normalize banking relationships to match BANKING_PARTNERS canonical names
