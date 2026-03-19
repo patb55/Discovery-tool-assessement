@@ -451,8 +451,8 @@ const UnifiedDiscoveryTool = () => {
           ...INITIAL_FORM,
           // === INSTITUTION PROFILE ===
           institutionName: safeStr(ip.name || ip.institutionName),
-          institutionType: matchOption(safeStr(ip.type || ip.institutionType), INSTITUTION_TYPES),
-          totalAssets: matchOption(safeStr(ip.assetSize || ip.totalAssets), ASSET_SIZES),
+          institutionType: matchOption(safeStr(ip.type || ip.institutionType), INSTITUTION_TYPES, 'institutionType'),
+          totalAssets: matchOption(safeStr(ip.assetSize || ip.totalAssets), ASSET_SIZES, 'assetSize'),
           countriesOfOperation: safeNum(ip.countries ?? ip.countriesOfOperation),
           regions: safeArr(ip.regions),
           isGlobal: safeBool(ip.isGlobal),
@@ -471,11 +471,11 @@ const UnifiedDiscoveryTool = () => {
             mt910: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt910),
             other: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.other),
           } : { ...INITIAL_FORM.messageDistribution },
-          reconciliationComplexity: matchOption(safeStr(tp.reconciliationComplexity), RECON_COMPLEXITY),
+          reconciliationComplexity: matchOption(safeStr(tp.reconciliationComplexity), RECON_COMPLEXITY, 'reconciliationComplexity'),
           // === TECHNICAL PROFILE ===
           coreSystem: matchOption(safeStr(tech.coreSystem || tech.coreBankingSystem), CORE_SYSTEMS),
-          systemAge: matchOption(safeStr(tech.systemAge || tech.currentSystemAge || ra.currentSystemAge), SYSTEM_AGES),
-          swiftConnectivity: matchOption(safeStr(tech.swiftConnectivity || tech.existingSwiftInfrastructure || tr.existingSwiftInfrastructure), SWIFT_OPTIONS),
+          systemAge: matchOption(safeStr(tech.systemAge || tech.currentSystemAge || ra.currentSystemAge), SYSTEM_AGES, 'systemAge'),
+          swiftConnectivity: matchOption(safeStr(tech.swiftConnectivity || tech.existingSwiftInfrastructure || tr.existingSwiftInfrastructure), SWIFT_OPTIONS, 'swiftConnectivity'),
           messagingFormats: (() => {
             const raw = tech.messagingFormats;
             if (typeof raw === 'string') return [raw];
@@ -491,23 +491,23 @@ const UnifiedDiscoveryTool = () => {
             }
             return [];
           })(),
-          isoSendCapable: matchOption(normIso(tech.isoSendCapable || tech.iso20022SendCapability), [...YES_NO_IP, 'Partial']),
-          isoReceiveCapable: matchOption(normIso(tech.isoReceiveCapable || tech.iso20022ReceiveCapability), [...YES_NO_IP, 'Partial']),
-          extendedFieldsCapable: matchOption(normExtended(tech.extendedFieldsCapable || tech.extendedDataCapability), YES_NO_PARTIAL),
+          isoSendCapable: matchOption(normIso(tech.isoSendCapable || tech.iso20022SendCapability), [...YES_NO_IP, 'Partial'], 'isoSendCapable'),
+          isoReceiveCapable: matchOption(normIso(tech.isoReceiveCapable || tech.iso20022ReceiveCapability), [...YES_NO_IP, 'Partial'], 'isoReceiveCapable'),
+          extendedFieldsCapable: matchOption(normExtended(tech.extendedFieldsCapable || tech.extendedDataCapability), YES_NO_PARTIAL, 'extendedFieldsCapable'),
           integrationComplexity: matchOption(safeStr(tech.integrationComplexity), COMPLEXITY),
           itTeamSize: normItTeamSize(tech.itTeamSize),
           blockchainExperience: safeBool(tech.blockchainExperience),
           // === STRATEGIC PROFILE ===
-          dltStrategyMaturity: matchOption(safeStr(sp.dltStrategyMaturity || sp.dltMaturity), DLT_MATURITY),
-          november2026Priority: matchOption(safeStr(sp.november2026Priority || sp.nov2026StructuredAddressPriority), NOV_2026_PRIORITY),
-          enhancedDataMandateReadiness: matchOption(safeStr(sp.enhancedDataMandateReadiness || sp.enhancedDataReadiness), ENHANCED_DATA_READINESS),
-          primaryComplianceMotivation: matchOption(safeStr(sp.primaryComplianceMotivation || sp.primaryMotivation || spLegacy.primaryMotivation), PRIMARY_COMPLIANCE_MOTIVATION),
+          dltStrategyMaturity: matchOption(safeStr(sp.dltStrategyMaturity || sp.dltMaturity), DLT_MATURITY, 'dltStrategyMaturity'),
+          november2026Priority: matchOption(safeStr(sp.november2026Priority || sp.nov2026StructuredAddressPriority), NOV_2026_PRIORITY, 'november2026Priority'),
+          enhancedDataMandateReadiness: matchOption(safeStr(sp.enhancedDataMandateReadiness || sp.enhancedDataReadiness), ENHANCED_DATA_READINESS, 'enhancedDataMandateReadiness'),
+          primaryComplianceMotivation: matchOption(safeStr(sp.primaryComplianceMotivation || sp.primaryMotivation || spLegacy.primaryMotivation), PRIMARY_COMPLIANCE_MOTIVATION, 'primaryComplianceMotivation'),
           // === BUDGET PROFILE ===
           complianceBudget: matchOption(safeStr(bp.complianceBudget), BUDGETS),
           urgency: matchOption(safeStr(bp.urgency || bp.implementationUrgency), URGENCIES),
           targetGoLive: safeStr(bp.targetGoLive || bp.targetGoLiveDate || ''),
           translationFeeTolerance: matchOption(safeStr(bp.translationFeeTolerance), FEE_TOLERANCE),
-          vendorSelectionStatus: matchOption(safeStr(bp.vendorSelectionStatus), VENDOR_STATUS),
+          vendorSelectionStatus: matchOption(safeStr(bp.vendorSelectionStatus), VENDOR_STATUS, 'vendorSelectionStatus'),
           // === FINANCIAL IMPACT PROFILE ===
           nostroRelationshipCount: matchOption(safeStr(fip.nostroRelationshipCount), NOSTRO_COUNTS),
           nostroBalanceRange: matchOption(safeStr(fip.nostroBalanceRange), NOSTRO_BALANCES),
@@ -515,21 +515,21 @@ const UnifiedDiscoveryTool = () => {
           monthlyPaymentRepairVolume: matchOption(safeStr(fip.monthlyPaymentRepairVolume), REPAIR_VOLUMES),
           truncationRejections: matchOption(safeStr(fip.truncationRejections), TRUNCATION_OPTIONS),
           capitalTreatmentAwareness: matchOption(safeStr(fip.capitalTreatmentAwareness || fip.budgetApprovalStatus), CAPITAL_TREATMENT),
-          digitalAssetExposure: matchOption(safeStr(fip.digitalAssetExposure), DIGITAL_ASSET_EXPOSURE),
+          digitalAssetExposure: matchOption(safeStr(fip.digitalAssetExposure), DIGITAL_ASSET_EXPOSURE, 'digitalAssetExposure'),
           // === MARKET CONTEXT PROFILE ===
-          institutionClassification: matchOption(safeStr(mcp.institutionClassification || mcp.marketPosition), INST_CLASSIFICATION),
-          geographicFootprint: matchOption(safeStr(mcp.geographicFootprint || mcp.differentiationStrategy), GEO_FOOTPRINT),
+          institutionClassification: matchOption(safeStr(mcp.institutionClassification || mcp.marketPosition), INST_CLASSIFICATION, 'institutionClassification'),
+          geographicFootprint: matchOption(safeStr(mcp.geographicFootprint || mcp.differentiationStrategy), GEO_FOOTPRINT, 'geographicFootprint'),
           primaryCorridorRegions: safeArr(mcp.primaryCorridorRegions),
-          boardAwarenessLevel: matchOption(safeStr(mcp.boardAwarenessLevel || mcp.regulatoryPressureLevel), BOARD_AWARENESS),
+          boardAwarenessLevel: matchOption(safeStr(mcp.boardAwarenessLevel || mcp.regulatoryPressureLevel), BOARD_AWARENESS, 'boardAwarenessLevel'),
           peerBenchmarkConsent: safeBool(mcp.peerBenchmarkConsent),
           // === STRATEGIC HORIZON PROFILE ===
           swiftTranslationOptInStatus: matchOption(normSwiftOptIn(shp.swiftTranslationOptInStatus), SWIFT_OPT_IN),
           structuredAddressReadiness: matchOption(safeStr(shp.structuredAddressReadiness), ADDRESS_READINESS),
           lastSwiftStandardsReview: matchOption(safeStr(shp.lastSwiftStandardsReview || shp.technologyRoadmap), SWIFT_REVIEW),
-          strategicAmbition: matchOption(safeStr(shp.strategicAmbition || shp.fiveYearVision), STRATEGIC_AMBITION),
+          strategicAmbition: matchOption(safeStr(shp.strategicAmbition || shp.fiveYearVision), STRATEGIC_AMBITION, 'strategicAmbition'),
           reportTypeRequested: matchOption(safeStr(shp.reportTypeRequested), REPORT_TYPE),
           // === ORGANIZATIONAL PROFILE ===
-          executiveSponsorship: matchOption(safeStr(op.executiveSponsorship || op.executiveSupport), SPONSORSHIP),
+          executiveSponsorship: matchOption(safeStr(op.executiveSponsorship || op.executiveSupport), SPONSORSHIP, 'executiveSponsorship'),
           dedicatedPM: normBoolStr(op.dedicatedPM ?? op.projectGovernance),
           changeManagement: matchOption(safeStr(op.changeManagement || op.changeManagementCapability), CHANGE_MGMT),
           testingEnvironment: matchOption(normBoolStr(op.testingEnvironment), YES_NO_PARTIAL),
