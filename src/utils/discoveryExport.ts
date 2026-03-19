@@ -220,7 +220,7 @@ export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
       isoReceiveCapable: d.isoReceiveCapable,
       extendedFieldsCapable: d.extendedFieldsCapable,
       integrationComplexity: d.integrationComplexity,
-      itTeamSize: d.itTeamSize,
+      itTeamSize: exportItTeamSize(d.itTeamSize),
       blockchainExperience: d.blockchainExperience
     },
     strategicProfile: {
