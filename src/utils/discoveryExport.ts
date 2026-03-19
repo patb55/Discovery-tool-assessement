@@ -100,13 +100,19 @@ export const calculateOrganizationalReadiness = (d: DiscoveryFormData): number =
   let score = 0;
   const sponsorMap: Record<string, number> = { 'C-suite champion': 25, 'C-level champion': 25, 'Dedicated sponsor': 20, 'Strong commitment': 20, 'Active support': 15, 'Awareness': 5, 'None': 0, 'No sponsorship': 0 };
   score += sponsorMap[d.executiveSponsorship] ?? 0;
-  score += d.dedicatedPM === 'Yes' ? 20 : 0;
+  // Safe default: absent/empty dedicatedPM = "No" (0 points), only explicit "Yes" scores
+  score += (d.dedicatedPM && d.dedicatedPM === 'Yes') ? 20 : 0;
   const cmMap: Record<string, number> = { 'Strong': 20, 'Moderate': 12, 'Limited': 5, 'None': 0 };
   score += cmMap[d.changeManagement] ?? 0;
+  // Safe default: absent/empty testingEnvironment = 0 points
   const testMap: Record<string, number> = { 'Yes': 20, 'Full': 20, 'Partial': 10, 'No': 0, 'None': 0 };
-  score += testMap[d.testingEnvironment] ?? 0;
+  score += (d.testingEnvironment && testMap[d.testingEnvironment] !== undefined) ? testMap[d.testingEnvironment] : 0;
+  // Safe default: absent/empty rollbackCapability = 0 points (not scored but guard anyway)
+  const rollbackMap: Record<string, number> = { 'Yes': 10, 'Full': 10, 'Partial': 5, 'No': 0, 'None': 0 };
+  score += (d.rollbackCapability && rollbackMap[d.rollbackCapability] !== undefined) ? rollbackMap[d.rollbackCapability] : 0;
+  // Safe default: absent/empty staffTraining = 0 points
   const trainMap: Record<string, number> = { 'Complete': 15, 'Completed': 15, 'In progress': 8, 'Planned': 3, 'Not started': 0 };
-  score += trainMap[d.staffTraining] ?? 0;
+  score += (d.staffTraining && trainMap[d.staffTraining] !== undefined) ? trainMap[d.staffTraining] : 0;
   return score;
 };
 
