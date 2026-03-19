@@ -281,18 +281,133 @@ const UnifiedDiscoveryTool = () => {
           return v;
         };
 
+        // Alias map for known import mismatches
+        const ALIAS_MAP: Record<string, Record<string, string>> = {
+          institutionType: {
+            'Asset Manager': 'Other', 'Fintech': 'Payment Institution', 'Fintech payment provider': 'Payment Institution',
+            'Asset manager': 'Other', 'Community Bank': 'Regional Bank', 'Community bank': 'Regional Bank', 'Investment Manager': 'Other',
+          },
+          assetSize: {
+            '€500M-€1B': 'Under €1B', '€100M-€500M': 'Under €1B', 'Under €500M': 'Under €1B',
+            '€1B-€5B': '€1B-€10B', '€5B-€10B': '€1B-€10B', '€10B-€50B': '€10B-€50B',
+            '€50B-€100B': '€50B-€200B', '€100B-€200B': '€50B-€200B',
+          },
+          systemAge: {
+            '1-2 years old': '1-2 years old', '3-5 years old': '3-5 years old',
+            '5-7 years old': '5-10 years old', '7-10 years old': '5-10 years old', '5-10 years old': '5-10 years old',
+            '10+ years old': 'Over 10 years old', '10-15 years old': 'Over 10 years old', 'Over 10 years old': 'Over 10 years old',
+          },
+          swiftConnectivity: {
+            'SWIFT GPI': 'Alliance Access', 'SWIFT Service Bureau': 'Service Bureau', 'Service Bureau': 'Service Bureau',
+            'Alliance Access': 'Alliance Access', 'Alliance Lite2': 'Alliance Lite2', 'Direct connection': 'Direct', 'None': 'None',
+          },
+          isoReceiveCapable: {
+            'Partial': 'In progress', 'partial': 'In progress', 'Yes': 'Yes', 'No': 'No', 'true': 'Yes', 'false': 'No',
+          },
+          isoSendCapable: {
+            'Partial': 'In progress', 'partial': 'In progress', 'Yes': 'Yes', 'No': 'No', 'true': 'Yes', 'false': 'No',
+          },
+          extendedFieldsCapable: {
+            'Full': 'Yes', 'Partial': 'In progress', 'None': 'No', 'full': 'Yes', 'partial': 'In progress', 'none': 'No',
+            'Limited': 'Partial',
+          },
+          dltStrategyMaturity: {
+            'No strategy': 'Not exploring', 'No DLT strategy': 'Not exploring', 'Research phase': 'Monitoring developments',
+            'Research': 'Monitoring developments', 'Exploring': 'Exploring / Learning', 'Exploring / Learning': 'Exploring / Learning',
+            'Evaluating': 'Actively evaluating', 'Actively evaluating': 'Actively evaluating',
+            'Actively piloting': 'Active pilot / POC', 'Pilot': 'Active pilot / POC', 'Active pilot / POC': 'Active pilot / POC',
+            'Production': 'Production deployment', 'Production deployment': 'Production deployment',
+          },
+          november2026Priority: {
+            'Critical priority': 'Critical priority', 'High priority': 'Active planning', 'Already planning': 'Active planning',
+            'Active planning': 'Active planning', 'Aware but not planning': 'On our radar', 'Aware but not yet planning': 'On our radar',
+            'On our radar': 'On our radar', 'Not planning': 'Not yet planned', 'Not yet planned': 'Not yet planned',
+            'Planning phase': 'Active planning', 'Compliant': 'Compliant',
+          },
+          enhancedDataMandateReadiness: {
+            'Not started': 'Not aware of structured address / enhanced data requirements',
+            'Not aware': 'Not aware of structured address / enhanced data requirements',
+            'Aware': 'Aware but not yet started planning', 'Aware but not yet started planning': 'Aware but not yet started planning',
+            'Planning stage': 'Planning phase — mapping data fields and assessing data quality',
+            'Planning': 'Planning phase — mapping data fields and assessing data quality',
+            'In progress': 'Planning phase — mapping data fields and assessing data quality',
+            'Implementation started': 'Planning phase — mapping data fields and assessing data quality',
+            'Ready': 'Ready for November 2026 structured address deadline',
+            'Complete': 'Ready for November 2026 structured address deadline',
+          },
+          primaryComplianceMotivation: {
+            'Regulatory requirement': 'Regulatory obligation (must comply)', 'Regulatory obligation': 'Regulatory obligation (must comply)',
+            'Regulatory obligation (must comply)': 'Regulatory obligation (must comply)',
+            'Competitive advantage': 'Competitive positioning', 'Competitive positioning': 'Competitive positioning',
+            'Cost reduction': 'Cost reduction (translation fees)', 'Cost reduction (translation fees)': 'Cost reduction (translation fees)',
+            'Cost reduction through lower transaction fees': 'Cost reduction through lower transaction fees',
+            'Client demand': 'Client demand', 'All of the above': 'All of the above',
+          },
+          vendorSelectionStatus: {
+            'Not started': 'Not started', 'Early evaluation': 'Evaluating options', 'Evaluating options': 'Evaluating options',
+            'Shortlisted': 'Shortlisted vendors', 'Shortlisted vendors': 'Shortlisted vendors', 'Selected': 'Selected', 'Contracted': 'Contracted',
+          },
+          digitalAssetExposure: {
+            'None': 'None', 'Monitoring': 'Monitoring only', 'Monitoring only': 'Monitoring only',
+            'Exploring': 'Pilot or exploring', 'Pilot or exploring': 'Pilot or exploring',
+            'Exploring (€1M-€10M)': 'Pilot or exploring', 'Significant (>€10M)': 'Operational', 'Operational': 'Operational',
+          },
+          institutionClassification: {
+            'Asset manager': 'Specialized institution', 'Asset Manager': 'Specialized institution',
+            'Fintech payment provider': 'Specialized institution', 'Fintech': 'Specialized institution',
+            'Community bank': 'Regional bank', 'Community Bank': 'Regional bank',
+            'Commercial bank': 'Commercial bank', 'Commercial Bank': 'Commercial bank',
+            'Savings bank': 'Savings bank', 'Regional bank': 'Regional bank', 'Regional Bank': 'Regional bank',
+            'Credit cooperative': 'Credit cooperative', 'Investment bank': 'Specialized institution',
+          },
+          geographicFootprint: {
+            'Domestic only': 'Domestic only', 'Domestic US': 'Domestic only',
+            'European': 'Europe broad', 'Europe broad': 'Europe broad', 'Eurozone': 'Eurozone',
+            'Asia-Pacific': 'Global', 'Global': 'Global', 'International': 'Global',
+          },
+          boardAwarenessLevel: {
+            'No awareness': 'No awareness', 'Basic awareness': 'Partial awareness', 'Awareness': 'Awareness',
+            'Partial awareness': 'Partial awareness', 'Moderate awareness': 'Moderate awareness',
+            'Full board engagement': 'Full awareness and active engagement', 'Full awareness': 'Full awareness and active engagement',
+            'Full awareness and active engagement': 'Full awareness and active engagement',
+          },
+          strategicAmbition: {
+            'Compliance only': 'Compliance only', 'Compliance minimum': 'Compliance only',
+            'Compliance and stability': 'Compliance and optimization', 'Compliance and optimization': 'Compliance and optimization',
+            'Market leadership': 'Strategic transformation', 'Strategic transformation': 'Strategic transformation',
+            'Operational excellence': 'Compliance and optimization',
+          },
+          executiveSponsorship: {
+            'No sponsorship': 'No sponsorship', 'None': 'No sponsorship', 'Limited awareness': 'Awareness', 'Awareness': 'Awareness',
+            'Partial commitment': 'Active support', 'Active support': 'Active support',
+            'Full commitment': 'Strong commitment', 'Strong commitment': 'Strong commitment',
+            'C-level champion': 'C-level champion', 'C-suite champion': 'C-suite champion',
+          },
+          reconciliationComplexity: {
+            'Low': 'Simple', 'Simple': 'Simple', 'Medium': 'Moderate', 'Moderate': 'Moderate',
+            'High': 'Complex', 'Complex': 'Complex', 'Very High': 'Very Complex', 'Very Complex': 'Very Complex',
+          },
+        };
+
         // Normalize imported dropdown values to match exact option lists
-        const matchOption = (val: string, options: string[]): string => {
+        const matchOption = (val: string, options: string[], fieldKey?: string): string => {
           if (!val) return '';
-          // Exact match first
+          // 1. Check alias map first (most reliable)
+          if (fieldKey && ALIAS_MAP[fieldKey]) {
+            const alias = ALIAS_MAP[fieldKey][val] || ALIAS_MAP[fieldKey][val.toLowerCase()];
+            if (alias && options.includes(alias)) return alias;
+          }
+          // 2. Exact match
           if (options.includes(val)) return val;
-          // Case-insensitive match
+          // 3. Case-insensitive match
           const lower = val.toLowerCase();
           const found = options.find(o => o.toLowerCase() === lower);
           if (found) return found;
-          // Partial / fuzzy — if the imported value contains an option or vice versa
-          const partial = options.find(o => lower.includes(o.toLowerCase()) || o.toLowerCase().includes(lower));
-          return partial || val; // fall back to raw value so user can see it
+          // 4. Partial match (contains)
+          const partial = options.find(o =>
+            lower.includes(o.toLowerCase()) || o.toLowerCase().includes(lower)
+          );
+          return partial || val;
         };
 
         // Normalize banking relationships to match BANKING_PARTNERS canonical names
@@ -336,8 +451,8 @@ const UnifiedDiscoveryTool = () => {
           ...INITIAL_FORM,
           // === INSTITUTION PROFILE ===
           institutionName: safeStr(ip.name || ip.institutionName),
-          institutionType: matchOption(safeStr(ip.type || ip.institutionType), INSTITUTION_TYPES),
-          totalAssets: matchOption(safeStr(ip.assetSize || ip.totalAssets), ASSET_SIZES),
+          institutionType: matchOption(safeStr(ip.type || ip.institutionType), INSTITUTION_TYPES, 'institutionType'),
+          totalAssets: matchOption(safeStr(ip.assetSize || ip.totalAssets), ASSET_SIZES, 'assetSize'),
           countriesOfOperation: safeNum(ip.countries ?? ip.countriesOfOperation),
           regions: safeArr(ip.regions),
           isGlobal: safeBool(ip.isGlobal),
@@ -356,11 +471,11 @@ const UnifiedDiscoveryTool = () => {
             mt910: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt910),
             other: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.other),
           } : { ...INITIAL_FORM.messageDistribution },
-          reconciliationComplexity: matchOption(safeStr(tp.reconciliationComplexity), RECON_COMPLEXITY),
+          reconciliationComplexity: matchOption(safeStr(tp.reconciliationComplexity), RECON_COMPLEXITY, 'reconciliationComplexity'),
           // === TECHNICAL PROFILE ===
           coreSystem: matchOption(safeStr(tech.coreSystem || tech.coreBankingSystem), CORE_SYSTEMS),
-          systemAge: matchOption(safeStr(tech.systemAge || tech.currentSystemAge || ra.currentSystemAge), SYSTEM_AGES),
-          swiftConnectivity: matchOption(safeStr(tech.swiftConnectivity || tech.existingSwiftInfrastructure || tr.existingSwiftInfrastructure), SWIFT_OPTIONS),
+          systemAge: matchOption(safeStr(tech.systemAge || tech.currentSystemAge || ra.currentSystemAge), SYSTEM_AGES, 'systemAge'),
+          swiftConnectivity: matchOption(safeStr(tech.swiftConnectivity || tech.existingSwiftInfrastructure || tr.existingSwiftInfrastructure), SWIFT_OPTIONS, 'swiftConnectivity'),
           messagingFormats: (() => {
             const raw = tech.messagingFormats;
             if (typeof raw === 'string') return [raw];
@@ -376,23 +491,23 @@ const UnifiedDiscoveryTool = () => {
             }
             return [];
           })(),
-          isoSendCapable: matchOption(normIso(tech.isoSendCapable || tech.iso20022SendCapability), [...YES_NO_IP, 'Partial']),
-          isoReceiveCapable: matchOption(normIso(tech.isoReceiveCapable || tech.iso20022ReceiveCapability), [...YES_NO_IP, 'Partial']),
-          extendedFieldsCapable: matchOption(normExtended(tech.extendedFieldsCapable || tech.extendedDataCapability), YES_NO_PARTIAL),
+          isoSendCapable: matchOption(normIso(tech.isoSendCapable || tech.iso20022SendCapability), [...YES_NO_IP, 'Partial'], 'isoSendCapable'),
+          isoReceiveCapable: matchOption(normIso(tech.isoReceiveCapable || tech.iso20022ReceiveCapability), [...YES_NO_IP, 'Partial'], 'isoReceiveCapable'),
+          extendedFieldsCapable: matchOption(normExtended(tech.extendedFieldsCapable || tech.extendedDataCapability), YES_NO_PARTIAL, 'extendedFieldsCapable'),
           integrationComplexity: matchOption(safeStr(tech.integrationComplexity), COMPLEXITY),
           itTeamSize: normItTeamSize(tech.itTeamSize),
           blockchainExperience: safeBool(tech.blockchainExperience),
           // === STRATEGIC PROFILE ===
-          dltStrategyMaturity: matchOption(safeStr(sp.dltStrategyMaturity || sp.dltMaturity), DLT_MATURITY),
-          november2026Priority: matchOption(safeStr(sp.november2026Priority || sp.nov2026StructuredAddressPriority), NOV_2026_PRIORITY),
-          enhancedDataMandateReadiness: matchOption(safeStr(sp.enhancedDataMandateReadiness || sp.enhancedDataReadiness), ENHANCED_DATA_READINESS),
-          primaryComplianceMotivation: matchOption(safeStr(sp.primaryComplianceMotivation || sp.primaryMotivation || spLegacy.primaryMotivation), PRIMARY_COMPLIANCE_MOTIVATION),
+          dltStrategyMaturity: matchOption(safeStr(sp.dltStrategyMaturity || sp.dltMaturity), DLT_MATURITY, 'dltStrategyMaturity'),
+          november2026Priority: matchOption(safeStr(sp.november2026Priority || sp.nov2026StructuredAddressPriority), NOV_2026_PRIORITY, 'november2026Priority'),
+          enhancedDataMandateReadiness: matchOption(safeStr(sp.enhancedDataMandateReadiness || sp.enhancedDataReadiness), ENHANCED_DATA_READINESS, 'enhancedDataMandateReadiness'),
+          primaryComplianceMotivation: matchOption(safeStr(sp.primaryComplianceMotivation || sp.primaryMotivation || spLegacy.primaryMotivation), PRIMARY_COMPLIANCE_MOTIVATION, 'primaryComplianceMotivation'),
           // === BUDGET PROFILE ===
           complianceBudget: matchOption(safeStr(bp.complianceBudget), BUDGETS),
           urgency: matchOption(safeStr(bp.urgency || bp.implementationUrgency), URGENCIES),
           targetGoLive: safeStr(bp.targetGoLive || bp.targetGoLiveDate || ''),
           translationFeeTolerance: matchOption(safeStr(bp.translationFeeTolerance), FEE_TOLERANCE),
-          vendorSelectionStatus: matchOption(safeStr(bp.vendorSelectionStatus), VENDOR_STATUS),
+          vendorSelectionStatus: matchOption(safeStr(bp.vendorSelectionStatus), VENDOR_STATUS, 'vendorSelectionStatus'),
           // === FINANCIAL IMPACT PROFILE ===
           nostroRelationshipCount: matchOption(safeStr(fip.nostroRelationshipCount), NOSTRO_COUNTS),
           nostroBalanceRange: matchOption(safeStr(fip.nostroBalanceRange), NOSTRO_BALANCES),
@@ -400,21 +515,21 @@ const UnifiedDiscoveryTool = () => {
           monthlyPaymentRepairVolume: matchOption(safeStr(fip.monthlyPaymentRepairVolume), REPAIR_VOLUMES),
           truncationRejections: matchOption(safeStr(fip.truncationRejections), TRUNCATION_OPTIONS),
           capitalTreatmentAwareness: matchOption(safeStr(fip.capitalTreatmentAwareness || fip.budgetApprovalStatus), CAPITAL_TREATMENT),
-          digitalAssetExposure: matchOption(safeStr(fip.digitalAssetExposure), DIGITAL_ASSET_EXPOSURE),
+          digitalAssetExposure: matchOption(safeStr(fip.digitalAssetExposure), DIGITAL_ASSET_EXPOSURE, 'digitalAssetExposure'),
           // === MARKET CONTEXT PROFILE ===
-          institutionClassification: matchOption(safeStr(mcp.institutionClassification || mcp.marketPosition), INST_CLASSIFICATION),
-          geographicFootprint: matchOption(safeStr(mcp.geographicFootprint || mcp.differentiationStrategy), GEO_FOOTPRINT),
+          institutionClassification: matchOption(safeStr(mcp.institutionClassification || mcp.marketPosition), INST_CLASSIFICATION, 'institutionClassification'),
+          geographicFootprint: matchOption(safeStr(mcp.geographicFootprint || mcp.differentiationStrategy), GEO_FOOTPRINT, 'geographicFootprint'),
           primaryCorridorRegions: safeArr(mcp.primaryCorridorRegions),
-          boardAwarenessLevel: matchOption(safeStr(mcp.boardAwarenessLevel || mcp.regulatoryPressureLevel), BOARD_AWARENESS),
+          boardAwarenessLevel: matchOption(safeStr(mcp.boardAwarenessLevel || mcp.regulatoryPressureLevel), BOARD_AWARENESS, 'boardAwarenessLevel'),
           peerBenchmarkConsent: safeBool(mcp.peerBenchmarkConsent),
           // === STRATEGIC HORIZON PROFILE ===
           swiftTranslationOptInStatus: matchOption(normSwiftOptIn(shp.swiftTranslationOptInStatus), SWIFT_OPT_IN),
           structuredAddressReadiness: matchOption(safeStr(shp.structuredAddressReadiness), ADDRESS_READINESS),
           lastSwiftStandardsReview: matchOption(safeStr(shp.lastSwiftStandardsReview || shp.technologyRoadmap), SWIFT_REVIEW),
-          strategicAmbition: matchOption(safeStr(shp.strategicAmbition || shp.fiveYearVision), STRATEGIC_AMBITION),
+          strategicAmbition: matchOption(safeStr(shp.strategicAmbition || shp.fiveYearVision), STRATEGIC_AMBITION, 'strategicAmbition'),
           reportTypeRequested: matchOption(safeStr(shp.reportTypeRequested), REPORT_TYPE),
           // === ORGANIZATIONAL PROFILE ===
-          executiveSponsorship: matchOption(safeStr(op.executiveSponsorship || op.executiveSupport), SPONSORSHIP),
+          executiveSponsorship: matchOption(safeStr(op.executiveSponsorship || op.executiveSupport), SPONSORSHIP, 'executiveSponsorship'),
           dedicatedPM: normBoolStr(op.dedicatedPM ?? op.projectGovernance),
           changeManagement: matchOption(safeStr(op.changeManagement || op.changeManagementCapability), CHANGE_MGMT),
           testingEnvironment: matchOption(normBoolStr(op.testingEnvironment), YES_NO_PARTIAL),
