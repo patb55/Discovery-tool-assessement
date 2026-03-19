@@ -207,10 +207,79 @@ const UnifiedDiscoveryTool = () => {
         const spLegacy = json.strategicPreferences || {};
         const tca = json.translationCostAnalysis || {};
 
-        const safeStr = (v: any, fallback = '') => typeof v === 'string' ? v : fallback;
-        const safeNum = (v: any, fallback = 0) => typeof v === 'number' ? v : fallback;
-        const safeBool = (v: any, fallback = false) => typeof v === 'boolean' ? v : fallback;
-        const safeArr = (v: any, fallback: any[] = []) => Array.isArray(v) ? v : fallback;
+        const safeStr = (v: any, fallback = '') => {
+          if (typeof v === 'string') return v;
+          if (typeof v === 'number') return String(v);
+          return fallback;
+        };
+        const safeNum = (v: any, fallback = 0) => typeof v === 'number' ? v : (typeof v === 'string' ? (parseFloat(v) || fallback) : fallback);
+        const safeBool = (v: any, fallback = false) => {
+          if (typeof v === 'boolean') return v;
+          if (typeof v === 'string') {
+            const l = v.toLowerCase();
+            if (l === 'yes' || l === 'true') return true;
+            if (l === 'no' || l === 'false') return false;
+          }
+          return fallback;
+        };
+        const safeArr = (v: any, fallback: any[] = []): any[] => {
+          if (Array.isArray(v)) return v;
+          if (v == null) return fallback;
+          if (typeof v === 'string') return [v];
+          return fallback;
+        };
+
+        // Boolean → "Yes"/"No" for radio fields
+        const normBoolStr = (v: any): string => {
+          if (v === true || v === 'true') return 'Yes';
+          if (v === false || v === 'false') return 'No';
+          if (typeof v === 'string') {
+            const l = v.toLowerCase();
+            if (l === 'yes') return 'Yes';
+            if (l === 'no') return 'No';
+            if (l === 'partial') return 'Partial';
+            if (l === 'full') return 'Yes';
+            if (l === 'none') return 'No';
+          }
+          return typeof v === 'string' ? v : '';
+        };
+
+        // Normalize ISO capability booleans → Yes/No/Partial
+        const normIso = (v: any): string => {
+          if (v === true || v === 'true') return 'Yes';
+          if (v === false || v === 'false') return 'No';
+          if (typeof v === 'string') {
+            const l = v.toLowerCase();
+            if (l === 'yes') return 'Yes';
+            if (l === 'no') return 'No';
+            if (l === 'partial' || l === 'in progress') return 'Partial';
+          }
+          return typeof v === 'string' ? v : '';
+        };
+
+        // Normalize extendedFieldsCapable: bool → Full/None
+        const normExtended = (v: any): string => {
+          if (v === true || v === 'true') return 'Full';
+          if (v === false || v === 'false') return 'None';
+          if (typeof v === 'string') {
+            const l = v.toLowerCase();
+            if (l === 'full' || l === 'yes') return 'Full';
+            if (l === 'partial' || l === 'limited') return 'Partial';
+            if (l === 'none' || l === 'no') return 'None';
+          }
+          return typeof v === 'string' ? v : '';
+        };
+
+        // Normalize SWIFT opt-in status
+        const normSwiftOptIn = (v: any): string => {
+          if (!v || typeof v !== 'string') return '';
+          if (v.includes('(using translation)') || v.includes('(fully MX)')) return v;
+          const l = v.toLowerCase();
+          if (l === 'opted in' || l.includes('paying fees')) return 'Opted in — currently paying fees';
+          if (l === 'opted out' || l.includes('native iso')) return 'Opted out — native ISO 20022';
+          if (l.includes('unknown') || l.includes('not assessed')) return 'Unknown or not assessed';
+          return v;
+        };
 
         // Normalize imported dropdown values to match exact option lists
         const matchOption = (val: string, options: string[]): string => {
@@ -230,9 +299,42 @@ const UnifiedDiscoveryTool = () => {
         const rawBanking = safeArr(ip.bankingRelationships);
         const normalizedBanking = rawBanking.map((b: string) => normalizeBankName(b) || b);
 
+        // Normalize corridors array
+        const normCorridors = (raw: any): Array<{currencyPair: string; monthlyVolume: number; volumeShare?: number; enabled?: boolean}> => {
+          const arr = safeArr(raw, [{ currencyPair: '', monthlyVolume: 0 }]);
+          return arr.map((c: any) => {
+            if (typeof c === 'string') return { currencyPair: c, monthlyVolume: 0, volumeShare: 0, enabled: true };
+            return {
+              currencyPair: safeStr(c.currencyPair || c.name, ''),
+              monthlyVolume: safeNum(c.monthlyVolume),
+              volumeShare: safeNum(c.volumeShare),
+              enabled: c.enabled !== false,
+            };
+          });
+        };
+
+        // Normalize itTeamSize: number → string, then match
+        const normItTeamSize = (v: any): string => {
+          const s = typeof v === 'number' ? String(v) : safeStr(v);
+          // If it's a raw number string like "8", try to find the right bucket
+          if (/^\d+$/.test(s)) {
+            const n = parseInt(s, 10);
+            if (n === 0) return '0';
+            if (n <= 2) return '1-2';
+            if (n <= 5) return '3-5';
+            if (n <= 9) return '6-9';
+            if (n <= 25) return '10-25';
+            return '26+';
+          }
+          // Check for "X dedicated" pattern like "10-25 dedicated"
+          const dedMatch = s.match(/^(\d[\d\-+]*)/);
+          if (dedMatch) return matchOption(dedMatch[1], TEAM_SIZES);
+          return matchOption(s, TEAM_SIZES);
+        };
+
         const imported: DiscoveryFormData = {
           ...INITIAL_FORM,
-          // institutionProfile (support both export-format keys and direct keys)
+          // === INSTITUTION PROFILE ===
           institutionName: safeStr(ip.name || ip.institutionName),
           institutionType: matchOption(safeStr(ip.type || ip.institutionType), INSTITUTION_TYPES),
           totalAssets: matchOption(safeStr(ip.assetSize || ip.totalAssets), ASSET_SIZES),
@@ -241,11 +343,11 @@ const UnifiedDiscoveryTool = () => {
           isGlobal: safeBool(ip.isGlobal),
           bankingRelationships: normalizedBanking,
           otherBankingRelationships: safeStr(ip.otherBankingRelationships),
-          // transactionProfile
+          // === TRANSACTION PROFILE ===
           monthlyVolume: safeNum(tp.monthlyVolume ?? json.totalMonthlyVolume),
           annualGrowthRate: typeof tp.annualGrowthRate === 'number' ? tp.annualGrowthRate : (parseInt(String(tp.annualGrowthRate)) || 0),
           crossBorderPercent: safeNum(tp.crossBorderPercent ?? tp.crossBorderPercentage),
-          corridors: safeArr(tp.corridors ?? json.corridors, [{ currencyPair: '', monthlyVolume: 0 }]),
+          corridors: normCorridors(tp.corridors ?? json.corridors),
           currencyCount: safeNum(tp.currencyCount ?? tp.currenciesHandled),
           messageDistribution: (tp.messageDistribution || tp.messageTypeDistribution) ? {
             mt103: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt103),
@@ -255,12 +357,14 @@ const UnifiedDiscoveryTool = () => {
             other: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.other),
           } : { ...INITIAL_FORM.messageDistribution },
           reconciliationComplexity: matchOption(safeStr(tp.reconciliationComplexity), RECON_COMPLEXITY),
-          // technicalProfile (support technicalInfrastructure keys)
+          // === TECHNICAL PROFILE ===
           coreSystem: matchOption(safeStr(tech.coreSystem || tech.coreBankingSystem), CORE_SYSTEMS),
           systemAge: matchOption(safeStr(tech.systemAge || tech.currentSystemAge || ra.currentSystemAge), SYSTEM_AGES),
           swiftConnectivity: matchOption(safeStr(tech.swiftConnectivity || tech.existingSwiftInfrastructure || tr.existingSwiftInfrastructure), SWIFT_OPTIONS),
           messagingFormats: (() => {
-            if (Array.isArray(tech.messagingFormats) && tech.messagingFormats.length) return tech.messagingFormats;
+            const raw = tech.messagingFormats;
+            if (typeof raw === 'string') return [raw];
+            if (Array.isArray(raw) && raw.length) return raw;
             const mf = tech.messagingFormat;
             if (mf && typeof mf === 'object') {
               const fmts: string[] = [];
@@ -272,24 +376,24 @@ const UnifiedDiscoveryTool = () => {
             }
             return [];
           })(),
-          isoSendCapable: matchOption(safeStr(tech.isoSendCapable || tech.iso20022SendCapability), [...YES_NO_IP, 'Partial']),
-          isoReceiveCapable: matchOption(safeStr(tech.isoReceiveCapable || tech.iso20022ReceiveCapability), [...YES_NO_IP, 'Partial']),
-          extendedFieldsCapable: matchOption(safeStr(tech.extendedFieldsCapable || tech.extendedDataCapability), YES_NO_PARTIAL),
+          isoSendCapable: matchOption(normIso(tech.isoSendCapable || tech.iso20022SendCapability), [...YES_NO_IP, 'Partial']),
+          isoReceiveCapable: matchOption(normIso(tech.isoReceiveCapable || tech.iso20022ReceiveCapability), [...YES_NO_IP, 'Partial']),
+          extendedFieldsCapable: matchOption(normExtended(tech.extendedFieldsCapable || tech.extendedDataCapability), YES_NO_PARTIAL),
           integrationComplexity: matchOption(safeStr(tech.integrationComplexity), COMPLEXITY),
-          itTeamSize: matchOption(safeStr(tech.itTeamSize), TEAM_SIZES),
+          itTeamSize: normItTeamSize(tech.itTeamSize),
           blockchainExperience: safeBool(tech.blockchainExperience),
-          // strategicProfile (support strategicOrientation keys)
+          // === STRATEGIC PROFILE ===
           dltStrategyMaturity: matchOption(safeStr(sp.dltStrategyMaturity || sp.dltMaturity), DLT_MATURITY),
           november2026Priority: matchOption(safeStr(sp.november2026Priority || sp.nov2026StructuredAddressPriority), NOV_2026_PRIORITY),
           enhancedDataMandateReadiness: matchOption(safeStr(sp.enhancedDataMandateReadiness || sp.enhancedDataReadiness), ENHANCED_DATA_READINESS),
           primaryComplianceMotivation: matchOption(safeStr(sp.primaryComplianceMotivation || sp.primaryMotivation || spLegacy.primaryMotivation), PRIMARY_COMPLIANCE_MOTIVATION),
-          // budgetProfile (support budgetTimeline keys)
+          // === BUDGET PROFILE ===
           complianceBudget: matchOption(safeStr(bp.complianceBudget), BUDGETS),
           urgency: matchOption(safeStr(bp.urgency || bp.implementationUrgency), URGENCIES),
           targetGoLive: safeStr(bp.targetGoLive || bp.targetGoLiveDate || ''),
           translationFeeTolerance: matchOption(safeStr(bp.translationFeeTolerance), FEE_TOLERANCE),
           vendorSelectionStatus: matchOption(safeStr(bp.vendorSelectionStatus), VENDOR_STATUS),
-          // financialImpactProfile (support financialImpact keys)
+          // === FINANCIAL IMPACT PROFILE ===
           nostroRelationshipCount: matchOption(safeStr(fip.nostroRelationshipCount), NOSTRO_COUNTS),
           nostroBalanceRange: matchOption(safeStr(fip.nostroBalanceRange), NOSTRO_BALANCES),
           costOfCapital: matchOption(safeStr(fip.costOfCapital || fip.costSensitivity), COST_OF_CAPITAL),
@@ -297,31 +401,31 @@ const UnifiedDiscoveryTool = () => {
           truncationRejections: matchOption(safeStr(fip.truncationRejections), TRUNCATION_OPTIONS),
           capitalTreatmentAwareness: matchOption(safeStr(fip.capitalTreatmentAwareness || fip.budgetApprovalStatus), CAPITAL_TREATMENT),
           digitalAssetExposure: matchOption(safeStr(fip.digitalAssetExposure), DIGITAL_ASSET_EXPOSURE),
-          // marketContextProfile (support marketContext keys)
+          // === MARKET CONTEXT PROFILE ===
           institutionClassification: matchOption(safeStr(mcp.institutionClassification || mcp.marketPosition), INST_CLASSIFICATION),
           geographicFootprint: matchOption(safeStr(mcp.geographicFootprint || mcp.differentiationStrategy), GEO_FOOTPRINT),
           primaryCorridorRegions: safeArr(mcp.primaryCorridorRegions),
           boardAwarenessLevel: matchOption(safeStr(mcp.boardAwarenessLevel || mcp.regulatoryPressureLevel), BOARD_AWARENESS),
           peerBenchmarkConsent: safeBool(mcp.peerBenchmarkConsent),
-          // strategicHorizonProfile (support strategicHorizon keys)
-          swiftTranslationOptInStatus: matchOption(safeStr(shp.swiftTranslationOptInStatus), SWIFT_OPT_IN),
+          // === STRATEGIC HORIZON PROFILE ===
+          swiftTranslationOptInStatus: matchOption(normSwiftOptIn(shp.swiftTranslationOptInStatus), SWIFT_OPT_IN),
           structuredAddressReadiness: matchOption(safeStr(shp.structuredAddressReadiness), ADDRESS_READINESS),
           lastSwiftStandardsReview: matchOption(safeStr(shp.lastSwiftStandardsReview || shp.technologyRoadmap), SWIFT_REVIEW),
           strategicAmbition: matchOption(safeStr(shp.strategicAmbition || shp.fiveYearVision), STRATEGIC_AMBITION),
           reportTypeRequested: matchOption(safeStr(shp.reportTypeRequested), REPORT_TYPE),
-          // organizationalProfile (support organizationalReadiness keys)
+          // === ORGANIZATIONAL PROFILE ===
           executiveSponsorship: matchOption(safeStr(op.executiveSponsorship || op.executiveSupport), SPONSORSHIP),
-          dedicatedPM: safeStr(op.dedicatedPM || op.projectGovernance),
+          dedicatedPM: normBoolStr(op.dedicatedPM ?? op.projectGovernance),
           changeManagement: matchOption(safeStr(op.changeManagement || op.changeManagementCapability), CHANGE_MGMT),
-          testingEnvironment: matchOption(((v) => v === 'Full' ? 'Yes' : v)(safeStr(op.testingEnvironment)), YES_NO_PARTIAL),
-          rollbackCapability: matchOption(((v) => v === 'Full' ? 'Yes' : v)(safeStr(op.rollbackCapability)), YES_NO_PARTIAL),
+          testingEnvironment: matchOption(normBoolStr(op.testingEnvironment), YES_NO_PARTIAL),
+          rollbackCapability: matchOption(normBoolStr(op.rollbackCapability), YES_NO_PARTIAL),
           staffTraining: matchOption(safeStr(op.staffTraining || op.staffTrainingNeeds), TRAINING),
         };
 
         setFormData(imported);
         setCorridorVersion(v => v + 1);
         setCurrentStep(0);
-        toast({ title: 'Assessment imported', description: `${imported.institutionName || 'Unknown institution'}. Review and update fields as needed.` });
+        toast({ title: 'Assessment data imported', description: 'Please review all fields before proceeding.' });
       } catch (err: any) {
         console.error('Import error:', err);
         toast({ title: 'Invalid file', description: err?.message || 'Could not parse JSON file', variant: 'destructive' });
