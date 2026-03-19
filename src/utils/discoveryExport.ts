@@ -154,6 +154,30 @@ const formatNumber = (value: number): string => {
   return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 
+// === Export Normalisation Helpers ===
+const exportSwiftOptIn = (v: string): string => {
+  if (v?.toLowerCase().includes('opted in') && !v.includes('('))
+    return 'Opted in (using translation)';
+  if (v?.toLowerCase().includes('opted out') && !v.includes('('))
+    return 'Opted out (fully MX)';
+  return v || '';
+};
+
+const exportItTeamSize = (v: string): string => {
+  if (!v) return '0';
+  // Already a bucket label — pass through
+  if (['0', '1-2', '3-5', '6-9', '6-10', '10-25', '10+', '26+'].includes(v)) return v;
+  // Raw number — bucket it
+  const n = parseInt(v, 10);
+  if (isNaN(n)) return v;
+  if (n === 0) return '0';
+  if (n <= 2) return '1-2';
+  if (n <= 5) return '3-5';
+  if (n <= 9) return '6-9';
+  if (n <= 25) return '10-25';
+  return '26+';
+};
+
 // === JSON Export ===
 export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
   const scores = calculateScores(d);
