@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateDiscoveryPDF, generateDiscoveryJSON, calculateScores, type DiscoveryFormData, type DiscoveryScores } from '@/utils/discoveryExport';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/PBC-Logo-Circuit.svg';
+import { BrandShaderGradient } from '@/components/effects/BrandShaderGradient';
 
 async function sha256(message: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(message);
@@ -578,9 +579,11 @@ const UnifiedDiscoveryTool = () => {
   // === LOGIN ===
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full">
-          <div className="bg-card rounded-lg shadow-lg p-8">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+        <BrandShaderGradient variant="hero" />
+        <div className="absolute inset-0 bg-background/85 pointer-events-none" />
+        <div className="max-w-md w-full relative z-10">
+          <div className="bg-card rounded-lg shadow-lg p-8 border border-border">
             <div className="text-center mb-6">
               <img src={logo} alt="PBC Logo" className="h-20 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-foreground mb-2">ISO 20022 Unified Discovery</h1>
@@ -615,17 +618,19 @@ const UnifiedDiscoveryTool = () => {
 
   // === RESULTS ===
   if (currentStep === TOTAL_STEPS && scores) {
-    const riskColorClass = scores.riskLevel === 'LOW' ? 'bg-green-50 border-green-200' :
+    const riskColorClass = scores.riskLevel === 'LOW' ? 'bg-accent/10 border-accent/30' :
       scores.riskLevel === 'MEDIUM' ? 'bg-yellow-50 border-yellow-200' :
       scores.riskLevel === 'HIGH' ? 'bg-orange-50 border-orange-200' : 'bg-red-50 border-red-200';
-    const barColor = scores.riskLevel === 'LOW' ? 'bg-green-500' :
+    const barColor = scores.riskLevel === 'LOW' ? 'bg-accent' :
       scores.riskLevel === 'MEDIUM' ? 'bg-yellow-500' :
       scores.riskLevel === 'HIGH' ? 'bg-orange-500' : 'bg-red-500';
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-card rounded-lg shadow-lg p-6 md:p-8">
+      <div className="min-h-screen bg-background p-4 md:p-8 relative overflow-hidden">
+        <BrandShaderGradient variant="contact" />
+        <div className="absolute inset-0 bg-background/90 pointer-events-none" />
+        <div className="max-w-4xl mx-auto relative z-10">
+          <div className="bg-card rounded-lg shadow-lg p-6 md:p-8 border border-border">
             <div className="flex items-center justify-between mb-6">
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-foreground mb-2">Unified Discovery Assessment</h1>
@@ -647,18 +652,18 @@ const UnifiedDiscoveryTool = () => {
 
             {/* 3-col summary */}
             <div className="grid md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+              <div className="bg-secondary border border-accent/30 rounded-lg p-4 text-center">
                 <p className="text-sm text-muted-foreground mb-1">Technical Readiness</p>
                 <p className="text-3xl font-bold text-primary">{scores.technicalReadiness}</p>
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+              <div className="bg-secondary border border-accent/30 rounded-lg p-4 text-center">
                 <p className="text-sm text-muted-foreground mb-1">Organizational Readiness</p>
                 <p className="text-3xl font-bold text-primary">{scores.organizationalReadiness}</p>
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+              <div className="bg-secondary border border-accent/30 rounded-lg p-4 text-center">
                 <p className="text-sm text-muted-foreground mb-1">Risk Level</p>
                 <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                  scores.riskLevel === 'LOW' ? 'bg-green-100 text-green-800' :
+                  scores.riskLevel === 'LOW' ? 'bg-accent/15 text-accent' :
                   scores.riskLevel === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
                   scores.riskLevel === 'HIGH' ? 'bg-orange-100 text-orange-800' :
                   'bg-red-100 text-red-800'
@@ -690,9 +695,11 @@ const UnifiedDiscoveryTool = () => {
 
   // === FORM STEPS ===
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-card rounded-lg shadow-lg p-6 md:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-8 relative overflow-hidden">
+      <BrandShaderGradient variant="section" />
+      <div className="absolute inset-0 bg-background/90 pointer-events-none" />
+      <div className="max-w-4xl mx-auto relative z-10">
+        <div className="bg-card rounded-lg shadow-lg p-6 md:p-8 border border-border">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex-1">
@@ -721,7 +728,7 @@ const UnifiedDiscoveryTool = () => {
             <div className="flex justify-between mt-2">
               {STEP_TITLES.map((t, i) => (
                 <button key={i} onClick={() => setCurrentStep(i)}
-                  className={`text-xs hidden md:block ${i === currentStep ? 'text-primary font-semibold' : i < currentStep ? 'text-green-600' : 'text-muted-foreground'}`}>
+                  className={`text-xs hidden md:block ${i === currentStep ? 'text-accent font-semibold' : i < currentStep ? 'text-accent' : 'text-muted-foreground'}`}>
                   {i < currentStep ? '✓' : i + 1}. {t}
                 </button>
               ))}
@@ -856,7 +863,7 @@ const Step1 = ({ formData: d, update, handleRegionToggle, handleBankToggle }: { 
         ))}
       </div>
       {d.isGlobal && (
-        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 flex items-center gap-2">
+        <div className="mt-2 p-2 bg-secondary border border-accent/30 rounded-lg text-sm text-foreground flex items-center gap-2">
           <CheckCircle className="w-4 h-4" /> Global operations selected — all regions included.
         </div>
       )}
@@ -1020,7 +1027,7 @@ const Step2 = ({ formData: d, update }: { formData: DiscoveryFormData; update: a
           const total = d.messageDistribution.mt103 + d.messageDistribution.mt202 + d.messageDistribution.mt900 + d.messageDistribution.mt910 + d.messageDistribution.other;
           const isValid = total === 100;
           return (
-            <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${isValid ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+            <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${isValid ? 'bg-accent/10 text-accent border border-accent/30' : 'bg-red-50 text-red-700 border border-red-200'}`}>
               {!isValid && <AlertCircle className="w-4 h-4" />}
               Total: {total}%
               {!isValid && <span className="font-normal text-xs ml-1">— Percentages must total 100% before export</span>}

@@ -639,7 +639,7 @@ const TechnicalRequirementsAssessment = () => {
   // Login Screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md w-full">
           <div className="bg-card rounded-lg shadow-lg p-8">
             {/* Logo and Header */}
@@ -705,7 +705,7 @@ const TechnicalRequirementsAssessment = () => {
     const { readiness, strategy, criticalGaps, recommendations } = report;
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-8">
+      <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           <div className="bg-card rounded-lg shadow-lg p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">
@@ -722,7 +722,7 @@ const TechnicalRequirementsAssessment = () => {
 
             {/* Readiness Score */}
             <div className={`p-6 rounded-lg mb-6 ${
-              readiness >= 70 ? 'bg-green-50 border-2 border-green-200' :
+              readiness >= 70 ? 'bg-accent/10 border-2 border-accent/40' :
               readiness >= 40 ? 'bg-yellow-50 border-2 border-yellow-200' :
               'bg-red-50 border-2 border-red-200'
             }`}>
@@ -733,7 +733,7 @@ const TechnicalRequirementsAssessment = () => {
               <div className="w-full bg-gray-200 rounded-full h-4">
                 <div 
                   className={`h-4 rounded-full transition-all duration-500 ${
-                    readiness >= 70 ? 'bg-green-500' :
+                    readiness >= 70 ? 'bg-accent' :
                     readiness >= 40 ? 'bg-yellow-500' :
                     'bg-red-500'
                   }`}
@@ -743,8 +743,8 @@ const TechnicalRequirementsAssessment = () => {
             </div>
 
             {/* Recommended Strategy */}
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-bold text-blue-900 mb-3">Recommended Strategy</h2>
+            <div className="bg-secondary border-2 border-accent/40 rounded-lg p-6 mb-6">
+              <h2 className="text-xl font-bold text-foreground mb-3">Recommended Strategy</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Approach</p>
@@ -753,7 +753,7 @@ const TechnicalRequirementsAssessment = () => {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Risk Level</p>
                   <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                    strategy.risk === 'LOW' ? 'bg-green-100 text-green-800' :
+                    strategy.risk === 'LOW' ? 'bg-accent/15 text-accent' :
                     strategy.risk === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-red-100 text-red-800'
                   }`}>
@@ -831,14 +831,14 @@ const TechnicalRequirementsAssessment = () => {
             </div>
 
             {/* Next Steps CTA */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg p-6">
+            <div className="bg-foreground text-background rounded-lg p-6">
               <h2 className="text-xl font-bold mb-2">Next Steps</h2>
               <p className="mb-4">
                 This assessment provides a high-level overview. For detailed implementation planning, 
                 vendor evaluation, and compliance support, schedule a consultation.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
-                <button className="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition">
+                <button className="bg-background text-accent px-6 py-2 rounded-lg font-semibold hover:bg-background/80 transition">
                   Schedule Consultation
                 </button>
               </div>
@@ -894,7 +894,7 @@ const TechnicalRequirementsAssessment = () => {
   const currentSection = isCustomSection ? null : sections[currentStep];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-2xl mx-auto">
         <div className="bg-card rounded-lg shadow-lg p-6 md:p-8">
           {/* Header */}
@@ -1188,10 +1188,10 @@ const TechnicalRequirementsAssessment = () => {
               )}
 
               {selectedRegions.some(r => r.includes('China')) && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="p-3 bg-secondary border border-accent/30 rounded-md">
                   <div className="flex gap-2">
-                    <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-blue-900">
+                    <Info className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-foreground">
                       <strong>CIPS Analysis:</strong> We'll evaluate both direct participation 
                       (requires Chinese regulatory compliance + EU sanctions considerations since July 2025) 
                       and indirect correspondent banking pathways.
@@ -1202,10 +1202,10 @@ const TechnicalRequirementsAssessment = () => {
 
               {(selectedRegions.includes('Sub-Saharan Africa') || 
                 selectedRegions.includes('Middle East & North Africa')) && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                <div className="p-3 bg-accent/10 border border-accent/30 rounded-md">
                   <div className="flex gap-2">
-                    <Info className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-green-900">
+                    <Info className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-foreground">
                       <strong>Regional Systems:</strong> PAPSS (Africa) and Buna (MENA) offer 
                       ISO 20022-native infrastructure with 70%+ cost reduction vs traditional 
                       correspondent banking.
