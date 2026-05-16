@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" role="img" aria-label="PBC Consulting, Payment Infrastructure Advisory">
+  <title>PBC Consulting</title>
+  <desc>PBC lettermark with subtle XRP-evocative diamond geometry: top inverted-V chevron of three nodes, lettermark, bottom V chevron. Charcoal + emerald institutional palette. Mirrors PBCLogo.tsx in pbc-consulting + pbc-consulting-presentation-iso-20022 (light variant for cream Discovery Tool surface).</desc>
+
+  <!-- Top chevron: 3 emerald nodes connected in ∨ topology (P high, B-hub low, C high) -->
+  <line x1="114" y1="40" x2="200" y2="56" stroke="#04745B" stroke-width="1.2" stroke-linecap="round" />
+  <line x1="200" y1="56" x2="286" y2="40" stroke="#04745B" stroke-width="1.2" stroke-linecap="round" />
+
+  <!-- Network nodes -->
+  <circle cx="114" cy="40" r="5.5" fill="#04745B" />
+  <circle cx="200" cy="56" r="5.5" fill="#04745B" />
+  <circle cx="286" cy="40" r="5.5" fill="#04745B" />
+
+  <!-- PBC Lettermark — charcoal on light surface (Discovery Tool uses cream body) -->
+  <text x="114" y="140" font-family="'Montserrat', sans-serif" font-weight="800" font-size="82" fill="#131720" text-anchor="middle" dominant-baseline="auto">P</text>
+  <text x="200" y="140" font-family="'Montserrat', sans-serif" font-weight="800" font-size="82" fill="#131720" text-anchor="middle" dominant-baseline="auto">B</text>
+  <text x="286" y="140" font-family="'Montserrat', sans-serif" font-weight="800" font-size="82" fill="#131720" text-anchor="middle" dominant-baseline="auto">C</text>
+
+  <!-- Bottom chevron (∧) — mirrors the top, completes diamond/X geometry -->
+  <polyline points="76,164 200,154 324,164" fill="none" stroke="#04745B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Tagline -->
+  <text x="200" y="181" font-family="'Montserrat', sans-serif" font-weight="500" font-size="10" fill="#04745B" text-anchor="middle" letter-spacing="3" dominant-baseline="auto">PAYMENT INFRASTRUCTURE ADVISORY</text>
+</svg>

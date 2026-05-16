@@ -3,7 +3,7 @@ import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson
 import { useToast } from '@/hooks/use-toast';
 import { generateDiscoveryPDF, generateDiscoveryJSON, calculateScores, type DiscoveryFormData, type DiscoveryScores } from '@/utils/discoveryExport';
 import { supabase } from '@/integrations/supabase/client';
-import logo from '@/assets/PBC-Logo-Circuit.svg';
+import logo from '@/assets/PBC-Logo.svg';
 import { BrandShaderGradient } from '@/components/effects/BrandShaderGradient';
 
 async function sha256(message: string): Promise<string> {

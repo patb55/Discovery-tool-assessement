@@ -3,7 +3,7 @@ import { ChevronRight, ChevronLeft, Download, CheckCircle, AlertCircle, FileJson
 import { useToast } from '@/hooks/use-toast';
 import { generatePDFReport, generateJSONExport } from '@/utils/technicalAssessmentExport';
 import { supabase } from '@/integrations/supabase/client';
-import logo from '@/assets/PBC-Logo-Circuit.svg';
+import logo from '@/assets/PBC-Logo.svg';
 
 async function sha256(message: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(message);
