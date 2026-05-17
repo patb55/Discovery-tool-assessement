@@ -18,8 +18,6 @@ export interface DiscoveryFormData {
   crossBorderPercent: number;
   corridors: { currencyPair: string; monthlyVolume: number; volumeShare?: number; enabled?: boolean }[];
   currencyCount: number;
-  messageDistribution: { mt103: number; mt202: number; mt900: number; mt910: number; other: number };
-  reconciliationComplexity: string;
   // Step 3
   coreSystem: string;
   systemAge: string;
@@ -208,8 +206,6 @@ export const generateDiscoveryJSON = (d: DiscoveryFormData): void => {
         ...(c.enabled !== undefined && { enabled: c.enabled }),
       })),
       currencyCount: d.currencyCount,
-      messageDistribution: d.messageDistribution,
-      reconciliationComplexity: d.reconciliationComplexity
     },
     technicalProfile: {
       coreSystem: d.coreSystem,
@@ -454,7 +450,6 @@ export const generateDiscoveryPDF = (d: DiscoveryFormData): void => {
     ['Annual Growth Rate', `${d.annualGrowthRate || 0}%`],
     ['Cross-Border %', `${d.crossBorderPercent || 0}%`],
     ['Currencies Handled', `${d.currencyCount || 0}`],
-    ['Reconciliation Complexity', d.reconciliationComplexity || 'N/A'],
   ];
   autoTable(doc, {
     startY: y + 5,

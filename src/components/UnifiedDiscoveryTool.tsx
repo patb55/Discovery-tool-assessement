@@ -18,7 +18,7 @@ const INITIAL_FORM: DiscoveryFormData = {
   regions: [], isGlobal: false, bankingRelationships: [], otherBankingRelationships: '',
   monthlyVolume: 0, annualGrowthRate: 0, crossBorderPercent: 0,
   corridors: [{ currencyPair: '', monthlyVolume: 0 }],
-  currencyCount: 0, messageDistribution: { mt103: 0, mt202: 0, mt900: 0, mt910: 0, other: 0 }, reconciliationComplexity: '',
+  currencyCount: 0,
   coreSystem: '', systemAge: '', swiftConnectivity: '', messagingFormats: [],
   isoSendCapable: '', isoReceiveCapable: '', extendedFieldsCapable: '',
   integrationComplexity: '', itTeamSize: '', blockchainExperience: false,
@@ -46,7 +46,6 @@ const YES_NO_IP = ['Yes', 'No', 'In progress'];
 const YES_NO_PARTIAL = ['Yes', 'No', 'Partial'];
 const COMPLEXITY = ['Low', 'Medium', 'High', 'Very High'];
 const TEAM_SIZES = ['0', '1-2', '3-5', '6-9', '10-25', '26+'];
-const RECON_COMPLEXITY = ['Simple', 'Moderate', 'Complex', 'Very Complex'];
 const BUDGETS = ['Under €100K', '€100K-€500K', '€500K-€1M', '€1M-€5M', 'Over €5M'];
 const URGENCIES = ['Immediate (started)', 'Standard (6-12 months)', 'Planned (12-18 months)', 'Flexible (18+ months)'];
 const FEE_TOLERANCE = ['Under €1,000', '€1,000-€5,000', '€5,000-€20,000', 'Over €20,000', 'Unknown'];
@@ -384,10 +383,6 @@ const UnifiedDiscoveryTool = () => {
             'Full commitment': 'Strong commitment', 'Strong commitment': 'Strong commitment',
             'C-level champion': 'C-level champion', 'C-suite champion': 'C-suite champion',
           },
-          reconciliationComplexity: {
-            'Low': 'Simple', 'Simple': 'Simple', 'Medium': 'Moderate', 'Moderate': 'Moderate',
-            'High': 'Complex', 'Complex': 'Complex', 'Very High': 'Very Complex', 'Very Complex': 'Very Complex',
-          },
         };
 
         // Normalize imported dropdown values to match exact option lists
@@ -465,14 +460,6 @@ const UnifiedDiscoveryTool = () => {
           crossBorderPercent: safeNum(tp.crossBorderPercent ?? tp.crossBorderPercentage),
           corridors: normCorridors(tp.corridors ?? json.corridors),
           currencyCount: safeNum(tp.currencyCount ?? tp.currenciesHandled),
-          messageDistribution: (tp.messageDistribution || tp.messageTypeDistribution) ? {
-            mt103: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt103),
-            mt202: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt202),
-            mt900: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt900),
-            mt910: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.mt910),
-            other: safeNum((tp.messageDistribution || tp.messageTypeDistribution)?.other),
-          } : { ...INITIAL_FORM.messageDistribution },
-          reconciliationComplexity: matchOption(safeStr(tp.reconciliationComplexity), RECON_COMPLEXITY, 'reconciliationComplexity'),
           // === TECHNICAL PROFILE ===
           coreSystem: matchOption(safeStr(tech.coreSystem || tech.coreBankingSystem), CORE_SYSTEMS),
           systemAge: matchOption(safeStr(tech.systemAge || tech.currentSystemAge || ra.currentSystemAge), SYSTEM_AGES, 'systemAge'),
@@ -554,11 +541,6 @@ const UnifiedDiscoveryTool = () => {
     const now = Date.now();
     if (isExporting || now - lastExport < COOLDOWN_MS) {
       toast({ title: 'Please wait', description: 'Wait 3 seconds between exports' });
-      return;
-    }
-    const distTotal = formData.messageDistribution.mt103 + formData.messageDistribution.mt202 + formData.messageDistribution.mt900 + formData.messageDistribution.mt910 + formData.messageDistribution.other;
-    if (distTotal !== 100) {
-      toast({ title: 'Validation Error', description: 'Message Type Distribution percentages must total 100% before export.', variant: 'destructive' });
       return;
     }
     setIsExporting(true);
@@ -995,48 +977,6 @@ const Step2 = ({ formData: d, update }: { formData: DiscoveryFormData; update: a
         </div>
       </div>
 
-      {/* Message Type Distribution */}
-      <div>
-        <h3 className="text-sm font-semibold text-foreground mb-1">Message Type Distribution</h3>
-        <p className="text-xs text-muted-foreground mb-3">Percentage breakdown of monthly message volume (must total 100%)</p>
-        <div className="grid grid-cols-2 gap-3">
-          {([
-            { key: 'mt103' as const, label: 'MT103 — Customer Credit Transfers' },
-            { key: 'mt202' as const, label: 'MT202 — Financial Institution Transfers' },
-            { key: 'mt900' as const, label: 'MT900 — Debit Confirmations' },
-            { key: 'mt910' as const, label: 'MT910 — Credit Confirmations' },
-            { key: 'other' as const, label: 'Other message types' },
-          ]).map(({ key, label }, idx, arr) => (
-            <div key={key} className={idx === arr.length - 1 ? 'col-span-2 max-w-[calc(50%-0.375rem)]' : ''}>
-              <label className="block text-sm text-foreground mb-1">{label}</label>
-              <div className="flex items-center gap-1">
-                <input type="number" min={0} max={100} step={1}
-                  value={d.messageDistribution[key] || ''}
-                  onChange={e => {
-                    const val = Math.max(0, Math.min(100, Math.floor(Number(e.target.value) || 0)));
-                    update('messageDistribution', { ...d.messageDistribution, [key]: val });
-                  }}
-                  className="w-full px-3 py-2 border border-input bg-background rounded-lg text-foreground text-sm focus:ring-2 focus:ring-ring"
-                  placeholder="0" />
-                <span className="text-sm font-medium text-muted-foreground">%</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        {(() => {
-          const total = d.messageDistribution.mt103 + d.messageDistribution.mt202 + d.messageDistribution.mt900 + d.messageDistribution.mt910 + d.messageDistribution.other;
-          const isValid = total === 100;
-          return (
-            <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${isValid ? 'bg-accent/10 text-accent border border-accent/30' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-              {!isValid && <AlertCircle className="w-4 h-4" />}
-              Total: {total}%
-              {!isValid && <span className="font-normal text-xs ml-1">— Percentages must total 100% before export</span>}
-            </div>
-          );
-        })()}
-      </div>
-
-      <SelectField label="Reconciliation Complexity" value={d.reconciliationComplexity} options={RECON_COMPLEXITY} onChange={v => update('reconciliationComplexity', v)} />
 
       {/* PART 1 — Pre-populated corridor grid */}
       <div>
